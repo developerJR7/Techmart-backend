@@ -82,13 +82,57 @@ describe('ProductsService', () => {
       const products = [{ id: '1', name: 'Product 1' }];
       mockCache.get.mockResolvedValue(null);
       mockPrisma.product.findMany.mockResolvedValue(products);
+      mockPrisma.product.count.mockResolvedValue(1);
 
       const result = await service.findAll({});
 
+      const expected = {
+        data: products,
+        meta: { total: 1, page: 1, lastPage: 1, limit: 20 },
+      };
+
       expect(cache.get).toHaveBeenCalled();
       expect(prisma.product.findMany).toHaveBeenCalled();
-      expect(cache.set).toHaveBeenCalledWith('products:all:{}', products, 300);
-      expect(result).toEqual(products);
+      expect(prisma.product.count).toHaveBeenCalled();
+      expect(cache.set).toHaveBeenCalledWith(
+        'products:all:{}',
+        expected,
+        300,
+      );
+      expect(result).toEqual(expected);
+    });
+
+    it('filtra por categoria, busca, faixa de preço e destaque', async () => {
+      mockCache.get.mockResolvedValue(null);
+      mockPrisma.product.findMany.mockResolvedValue([]);
+      mockPrisma.product.count.mockResolvedValue(0);
+
+      await service.findAll({
+        categoryId: 'cat-1',
+        search: 'notebook',
+        minPrice: 100,
+        maxPrice: 500,
+        featured: true,
+        page: 2,
+        limit: 10,
+      });
+
+      expect(prisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            isActive: true,
+            categoryId: 'cat-1',
+            OR: [
+              { name: { contains: 'notebook', mode: 'insensitive' } },
+              { description: { contains: 'notebook', mode: 'insensitive' } },
+            ],
+            price: { gte: 100, lte: 500 },
+            isFeatured: true,
+          },
+          take: 10,
+          skip: 10, // (page 2 - 1) * limit 10
+        }),
+      );
     });
   });
 

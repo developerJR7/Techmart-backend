@@ -59,8 +59,12 @@ export class ProductsController {
 
   @Get('featured')
   @ApiOperation({ summary: 'Listar produtos em destaque' })
-  findFeatured() {
-    return this.productsService.findAll({ featured: true, limit: 8 });
+  async findFeatured() {
+    const { data } = await this.productsService.findAll({
+      featured: true,
+      limit: 8,
+    });
+    return data;
   }
 
   @Get('slug/:slug')

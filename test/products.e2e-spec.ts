@@ -61,11 +61,13 @@ describe('Products (e2e)', () => {
   });
 
   describe('/api/v1/products (GET)', () => {
-    it('should return empty array initially', () => {
-      return request(app.getHttpServer())
+    it('should return empty array initially', async () => {
+      const response = await request(app.getHttpServer())
         .get('/api/v1/products')
-        .expect(200)
-        .expect([]);
+        .expect(200);
+
+      expect(response.body.data).toEqual([]);
+      expect(response.body.meta.total).toBe(0);
     });
 
     it('should return products with pagination', async () => {
@@ -104,7 +106,7 @@ describe('Products (e2e)', () => {
         .expect(200);
 
       expect(response.body.data).toHaveLength(2);
-      expect(response.body.total).toBe(2);
+      expect(response.body.meta.total).toBe(2);
     });
   });
 
@@ -149,7 +151,9 @@ describe('Products (e2e)', () => {
         .expect(201);
 
       expect(response.body.name).toBe('New Product');
-      expect(response.body.price).toBe(300);
+      // Prisma serializa Decimal como string em JSON (mesma convenção que
+      // o frontend já assume em toda a base, ex.: Number(product.price)).
+      expect(Number(response.body.price)).toBe(300);
     });
 
     it('should fail without authentication', () => {
@@ -189,7 +193,7 @@ describe('Products (e2e)', () => {
         .expect(200);
 
       expect(response.body.name).toBe('Updated Product');
-      expect(response.body.price).toBe(999);
+      expect(Number(response.body.price)).toBe(999);
     });
   });
 

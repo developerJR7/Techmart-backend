@@ -23,25 +23,55 @@ export class ProductsService {
       return cached;
     }
 
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+
+    const where: any = { isActive: true };
+    if (params.categoryId) {
+      where.categoryId = params.categoryId;
+    }
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+      where.price = {};
+      if (params.minPrice !== undefined) where.price.gte = params.minPrice;
+      if (params.maxPrice !== undefined) where.price.lte = params.maxPrice;
+    }
+    if (params.featured) {
+      where.isFeatured = true;
+    }
+
     // Fetch from database
     const startTime = Date.now();
-    const products = await this.prisma.product.findMany({
-      where: params.where,
-      include: {
-        category: true,
-      },
-      take: params.take || 20,
-      skip: params.skip || 0,
-      orderBy: params.orderBy || { createdAt: 'desc' },
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+        },
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy: params.orderBy || { createdAt: 'desc' },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
 
     const duration = Date.now() - startTime;
     this.logger.logDatabaseQuery('product.findMany', duration);
 
-    // Cache for 5 minutes
-    await this.cache.set(cacheKey, products, 300);
+    const result = {
+      data,
+      meta: { total, page, lastPage: Math.ceil(total / limit) || 1, limit },
+    };
 
-    return products;
+    // Cache for 5 minutes
+    await this.cache.set(cacheKey, result, 300);
+
+    return result;
   }
 
   async findOne(id: string) {

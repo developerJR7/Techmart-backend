@@ -1,0 +1,84 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import { OrdersController } from './orders.controller';
+import { OrdersService } from './orders.service';
+import { UpsellService } from './upsell.service';
+
+describe('OrdersController', () => {
+  let controller: OrdersController;
+
+  const mockOrdersService = {
+    findOne: jest.fn(),
+  };
+
+  const mockUpsellService = {
+    generateUpsellOffers: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [OrdersController],
+      providers: [
+        { provide: OrdersService, useValue: mockOrdersService },
+        { provide: UpsellService, useValue: mockUpsellService },
+      ],
+    }).compile();
+
+    controller = module.get<OrdersController>(OrdersController);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Regressão do IDOR: GET /orders/:id/upsell-offers não podia ser chamado
+  // com o ID de um pedido de outro usuário para descobrir o que ele comprou.
+  describe('getUpsellOffers', () => {
+    const userA = { id: 'user-a', role: 'CUSTOMER' };
+
+    it('usuário A acessando as ofertas do próprio pedido A → permitido', async () => {
+      mockOrdersService.findOne.mockResolvedValue({ id: 'order-a' });
+      mockUpsellService.generateUpsellOffers.mockResolvedValue([
+        { productId: 'mouse', discountPercent: 15 },
+      ]);
+
+      const result = await controller.getUpsellOffers('order-a', userA);
+
+      expect(mockOrdersService.findOne).toHaveBeenCalledWith(
+        'order-a',
+        'user-a',
+      );
+      expect(mockUpsellService.generateUpsellOffers).toHaveBeenCalledWith(
+        'order-a',
+      );
+      expect(result).toEqual([{ productId: 'mouse', discountPercent: 15 }]);
+    });
+
+    it('usuário A tentando acessar as ofertas do pedido B → bloqueado', async () => {
+      // findOne(id, userId) simula o comportamento real: pedido de outro
+      // usuário não é encontrado com o filtro de posse.
+      mockOrdersService.findOne.mockRejectedValue(
+        new NotFoundException('Pedido não encontrado'),
+      );
+
+      await expect(
+        controller.getUpsellOffers('order-b', userA),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockUpsellService.generateUpsellOffers).not.toHaveBeenCalled();
+    });
+
+    it('admin acessa ofertas de qualquer pedido sem filtro de dono', async () => {
+      const admin = { id: 'admin-1', role: 'ADMIN' };
+      mockOrdersService.findOne.mockResolvedValue({ id: 'order-b' });
+      mockUpsellService.generateUpsellOffers.mockResolvedValue([]);
+
+      await controller.getUpsellOffers('order-b', admin);
+
+      expect(mockOrdersService.findOne).toHaveBeenCalledWith(
+        'order-b',
+        undefined,
+      );
+    });
+  });
+});

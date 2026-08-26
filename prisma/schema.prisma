@@ -43,6 +43,7 @@ model User {
   chatConversations       ChatConversation[]
   loyaltyTransactions     LoyaltyTransaction[]
   auditLogs               AuditLog[]
+  seller                  Seller?
 
   @@index([email])
   @@map("users")
@@ -166,10 +167,15 @@ model Product {
   reviewCount     Int      @default(0)
   metaTitle       String?
   metaDescription String?
+  // Nullable nesta fase de propósito — ver prisma/migrations para a
+  // migração de backfill ("TechMart Official Store") e o plano de
+  // tornar obrigatório depois, em uma segunda migration.
+  storeId         String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   category       Category               @relation(fields: [categoryId], references: [id])
+  store          Store?                 @relation(fields: [storeId], references: [id])
   orderItems     OrderItem[]
   cartItems      CartItem[]
   wishlistItems  WishlistItem[]
@@ -180,6 +186,7 @@ model Product {
   @@index([slug])
   @@index([categoryId])
   @@index([isFeatured])
+  @@index([storeId])
   @@map("products")
 }
 
@@ -329,6 +336,7 @@ model Order {
   orderItems OrderItem[]
   payment    Payment?
   loyaltyTransactions LoyaltyTransaction[]
+  subOrders  SubOrder[]
 
   @@index([userId])
   @@index([status])
@@ -340,16 +348,48 @@ model OrderItem {
   id        String   @id @default(uuid())
   orderId   String
   productId String
+  // Nullable nesta fase: hoje existem 0 pedidos no banco, então não há
+  // nada pra migrar ainda. Quando houver pedidos reais antes desta
+  // mudança, o backfill cria 1 SubOrder por (order, store) presente
+  // nos itens e preenche subOrderId — só depois disso o campo vira
+  // obrigatório, na mesma lógica de Product.storeId.
+  subOrderId String?
   quantity  Int
   price     Decimal  @db.Decimal(10, 2)
   createdAt DateTime @default(now())
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id])
+  subOrder SubOrder? @relation(fields: [subOrderId], references: [id])
 
   @@index([orderId])
   @@index([productId])
+  @@index([subOrderId])
   @@map("order_items")
+}
+
+model SubOrder {
+  id           String      @id @default(uuid())
+  orderId      String
+  storeId      String
+  // Reaproveita o enum OrderStatus já existente (mesmo significado:
+  // ciclo de vida de um pedido/sub-pedido) em vez de duplicar um
+  // enum equivalente só para o SubOrder.
+  status       OrderStatus @default(PENDING)
+  subtotal     Decimal     @db.Decimal(10, 2)
+  shippingCost Decimal     @default(0) @db.Decimal(10, 2)
+  total        Decimal     @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  store      Store       @relation(fields: [storeId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([orderId])
+  @@index([storeId])
+  @@index([status])
+  @@map("sub_orders")
 }
 
 // ============================================
@@ -548,12 +588,62 @@ model Integration {
 }
 
 // ============================================
+// MARKETPLACE — SELLER & STORE (Fase 1.1)
+// ============================================
+
+model Seller {
+  id        String       @id @default(uuid())
+  // Nullable de propósito: a "TechMart Official Store" (produtos
+  // legados, sem vendedor real) usa um Seller sem User vinculado, em
+  // vez de precisar de uma conta de sistema falsa. Todo Seller real
+  // (que passou pelo fluxo de aprovação) sempre tem userId preenchido.
+  userId    String?      @unique
+  document  String?
+  phone     String?
+  status    SellerStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store?
+
+  @@index([status])
+  @@map("sellers")
+}
+
+model Store {
+  id          String   @id @default(uuid())
+  sellerId    String   @unique
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seller    Seller     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  products  Product[]
+  subOrders SubOrder[]
+
+  @@index([slug])
+  @@map("stores")
+}
+
+// ============================================
 // ENUMS
 // ============================================
 
 enum UserRole {
   CUSTOMER
+  SELLER
   ADMIN
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
 }
 
 enum OrderStatus {

@@ -30,6 +30,7 @@ import { IntegrationModule } from './modules/integration/integration.module';
 import { HealthModule } from './health/health.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SellersModule } from './modules/sellers/sellers.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { AdminModule } from './modules/admin/admin.module';
     HealthModule,
     UploadModule,
     AdminModule,
+    SellersModule,
     AuthModule,
     UsersModule,
     ProductsModule,

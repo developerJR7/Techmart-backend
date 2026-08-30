@@ -42,7 +42,14 @@ export class ProductsController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'minPrice', required: false, type: Number })
   @ApiQuery({ name: 'maxPrice', required: false, type: Number })
+  @ApiQuery({ name: 'minRating', required: false, type: Number })
+  @ApiQuery({ name: 'inStock', required: false, type: Boolean })
   @ApiQuery({ name: 'featured', required: false, type: Boolean })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['relevance', 'newest', 'price_asc', 'price_desc', 'rating_desc'],
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(@Query() query: any) {
@@ -51,7 +58,10 @@ export class ProductsController {
       search: query.search,
       minPrice: query.minPrice ? Number(query.minPrice) : undefined,
       maxPrice: query.maxPrice ? Number(query.maxPrice) : undefined,
+      minRating: query.minRating ? Number(query.minRating) : undefined,
+      inStock: query.inStock === 'true',
       featured: query.featured === 'true',
+      sort: query.sort,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 12,
     });

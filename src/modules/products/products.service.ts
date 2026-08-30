@@ -23,7 +23,7 @@ export class ProductsService {
       return cached;
     }
 
-    const page = params.page || 1;
+    const page = Math.max(1, Math.floor(params.page) || 1);
     const limit = params.limit || 20;
 
     const where: any = { isActive: true };
@@ -41,9 +41,29 @@ export class ProductsService {
       if (params.minPrice !== undefined) where.price.gte = params.minPrice;
       if (params.maxPrice !== undefined) where.price.lte = params.maxPrice;
     }
+    if (params.minRating !== undefined) {
+      where.averageRating = { gte: params.minRating };
+    }
+    if (params.inStock) {
+      where.stock = { gt: 0 };
+    }
     if (params.featured) {
       where.isFeatured = true;
     }
+
+    // Allowlist explícita — nunca repassar `sort`/`orderBy` do client direto
+    // pro Prisma (client controlaria orderBy arbitrário sobre qualquer coluna).
+    const orderByMap: Record<string, Record<string, unknown>> = {
+      relevance: { createdAt: 'desc' },
+      newest: { createdAt: 'desc' },
+      price_asc: { price: 'asc' },
+      price_desc: { price: 'desc' },
+      // `nulls: 'last'` — sem isso o Postgres usa NULLS FIRST em DESC por
+      // padrão, o que colocaria produtos sem nenhuma review acima dos
+      // 5 estrelas na ordenação "Melhor avaliados".
+      rating_desc: { averageRating: { sort: 'desc', nulls: 'last' } },
+    };
+    const orderBy = orderByMap[params.sort] || orderByMap.relevance;
 
     // Fetch from database
     const startTime = Date.now();
@@ -55,7 +75,7 @@ export class ProductsService {
         },
         take: limit,
         skip: (page - 1) * limit,
-        orderBy: params.orderBy || { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.product.count({ where }),
     ]);

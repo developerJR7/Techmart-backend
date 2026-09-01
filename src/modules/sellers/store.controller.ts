@@ -7,6 +7,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { StoreService } from './store.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Seller - Store')
 @ApiBearerAuth()
@@ -18,19 +19,19 @@ export class StoreController {
 
   @Post()
   @ApiOperation({ summary: 'Criar a loja do vendedor autenticado' })
-  create(@CurrentUser() user: any, @Body() dto: CreateStoreDto) {
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateStoreDto) {
     return this.storeService.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obter a própria loja' })
-  findMine(@CurrentUser() user: any) {
+  findMine(@CurrentUser() user: RequestUser) {
     return this.storeService.findMine(user.id);
   }
 
   @Patch()
   @ApiOperation({ summary: 'Atualizar a própria loja' })
-  update(@CurrentUser() user: any, @Body() dto: UpdateStoreDto) {
+  update(@CurrentUser() user: RequestUser, @Body() dto: UpdateStoreDto) {
     return this.storeService.update(user.id, dto);
   }
 }

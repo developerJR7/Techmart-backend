@@ -10,9 +10,7 @@ import { randomBytes } from 'crypto';
 // projeto, que compila para CommonJS — gerador nativo equivalente, sem
 // dependência extra.
 function generateToken(length: number): string {
-  return randomBytes(length)
-    .toString('base64url')
-    .slice(0, length);
+  return randomBytes(length).toString('base64url').slice(0, length);
 }
 
 @Injectable()

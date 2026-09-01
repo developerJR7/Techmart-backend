@@ -20,6 +20,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CreatePixPaymentDto } from './dto/create-pix-payment.dto';
 import { PaymentStatusDto } from './dto/payment-status.dto';
 import { Request } from 'express';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -39,7 +40,7 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
   async createCheckout(
     @Param('orderId') orderId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.paymentsService.createCheckoutSession(orderId, user.id);
   }
@@ -56,7 +57,7 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
   async createPixPayment(
     @Body() createPixPaymentDto: CreatePixPaymentDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.paymentsService.createPixPayment(createPixPaymentDto, user.id);
   }
@@ -76,7 +77,7 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: 'Pagamento não encontrado' })
   async getPaymentStatus(
     @Param('orderId') orderId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.paymentsService.getPaymentStatus(orderId, user.id);
   }

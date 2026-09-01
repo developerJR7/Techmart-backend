@@ -32,4 +32,19 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Testes batem em corpos de resposta HTTP (supertest `.body`) e em
+    // matchers do Jest (`expect.objectContaining`/`anything()`), que são
+    // `any` por design das próprias libs — não há tipagem de aplicação
+    // que resolva isso. Nada disso roda em produção (tsconfig.build.json
+    // já exclui *.spec.ts e test/), então mantemos como aviso aqui, no
+    // mesmo espírito do no-unsafe-argument acima.
+    files: ['test/**/*.ts', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+    },
+  },
 );

@@ -9,6 +9,7 @@ import Stripe from 'stripe';
 import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePixPaymentDto } from './dto/create-pix-payment.dto';
+import { getErrorMessage, getErrorStack } from '../../common/utils/error.util';
 
 @Injectable()
 export class PaymentsService {
@@ -95,8 +96,8 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to create checkout session: ${error.message}`,
-        error.stack,
+        `Failed to create checkout session: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
@@ -151,8 +152,8 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to create PIX payment: ${error.message}`,
-        error.stack,
+        `Failed to create PIX payment: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
@@ -184,8 +185,8 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to get payment status: ${error.message}`,
-        error.stack,
+        `Failed to get payment status: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
@@ -214,9 +215,11 @@ export class PaymentsService {
       );
     } catch (err) {
       this.logger.error(
-        `Webhook signature verification failed: ${err.message}`,
+        `Webhook signature verification failed: ${getErrorMessage(err)}`,
       );
-      throw new Error(`Webhook signature verification failed: ${err.message}`);
+      throw new Error(
+        `Webhook signature verification failed: ${getErrorMessage(err)}`,
+      );
     }
 
     this.logger.log(`Received webhook event: ${event.type}`);
@@ -237,8 +240,8 @@ export class PaymentsService {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to process webhook: ${error.message}`,
-        error.stack,
+        `Failed to process webhook: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }

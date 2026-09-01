@@ -14,6 +14,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { SetDefaultAddressDto } from './dto/set-default-address.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Addresses')
 @ApiBearerAuth()
@@ -24,19 +25,22 @@ export class AddressesController {
 
   @Post()
   @ApiOperation({ summary: 'Criar endereço' })
-  create(@CurrentUser() user: any, @Body() createAddressDto: CreateAddressDto) {
+  create(
+    @CurrentUser() user: RequestUser,
+    @Body() createAddressDto: CreateAddressDto,
+  ) {
     return this.addressesService.create(user.id, createAddressDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar endereços do usuário' })
-  findAll(@CurrentUser() user: any) {
+  findAll(@CurrentUser() user: RequestUser) {
     return this.addressesService.findAll(user.id);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter endereço por ID' })
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.addressesService.findOne(id, user.id);
   }
 
@@ -45,20 +49,23 @@ export class AddressesController {
   update(
     @Param('id') id: string,
     @Body() updateAddressDto: Partial<CreateAddressDto>,
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.addressesService.update(id, user.id, updateAddressDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover endereço' })
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
+  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.addressesService.remove(id, user.id);
   }
 
   @Post('set-default')
   @ApiOperation({ summary: 'Definir endereço padrão' })
-  setDefault(@CurrentUser() user: any, @Body() dto: SetDefaultAddressDto) {
+  setDefault(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: SetDefaultAddressDto,
+  ) {
     return this.addressesService.setDefault(user.id, dto.addressId);
   }
 }

@@ -6,6 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SellersService } from './sellers.service';
 import { ApplySellerDto } from './dto/apply-seller.dto';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Sellers')
 @ApiBearerAuth()
@@ -17,7 +18,7 @@ export class SellersController {
 
   @Post('apply')
   @ApiOperation({ summary: 'Solicitar tornar-se vendedor (onboarding)' })
-  apply(@CurrentUser() user: any, @Body() dto: ApplySellerDto) {
+  apply(@CurrentUser() user: RequestUser, @Body() dto: ApplySellerDto) {
     return this.sellersService.apply(user.id, dto);
   }
 }

@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getErrorMessage, getErrorStack } from '../../common/utils/error.util';
+
+export type CreatedProduct = Prisma.ProductGetPayload<{
+  include: { category: true; specifications: true };
+}>;
 
 export interface ProductGenerationInput {
   category?: string;
@@ -23,7 +29,7 @@ export interface GeneratedProduct {
 export class AIProductGeneratorService {
   private readonly logger = new Logger(AIProductGeneratorService.name);
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model?: GenerativeModel;
 
   constructor(
     private configService: ConfigService,
@@ -55,7 +61,7 @@ export class AIProductGeneratorService {
       const prompt = this.buildProductGenerationPrompt(input);
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       // Parse JSON response
@@ -65,8 +71,8 @@ export class AIProductGeneratorService {
       return productData;
     } catch (error) {
       this.logger.error(
-        `Failed to generate product: ${error.message}`,
-        error.stack,
+        `Failed to generate product: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
@@ -84,7 +90,7 @@ export class AIProductGeneratorService {
       const prompt = this.buildMultipleProductsPrompt(input, count);
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       // Parse JSON array response
@@ -94,14 +100,16 @@ export class AIProductGeneratorService {
       return products;
     } catch (error) {
       this.logger.error(
-        `Failed to generate multiple products: ${error.message}`,
-        error.stack,
+        `Failed to generate multiple products: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
   }
 
-  async createProductInDatabase(productData: GeneratedProduct): Promise<any> {
+  async createProductInDatabase(
+    productData: GeneratedProduct,
+  ): Promise<CreatedProduct> {
     try {
       // Find or create category
       let category = await this.prisma.category.findFirst({
@@ -164,8 +172,8 @@ export class AIProductGeneratorService {
       return product;
     } catch (error) {
       this.logger.error(
-        `Failed to create product in database: ${error.message}`,
-        error.stack,
+        `Failed to create product in database: ${getErrorMessage(error)}`,
+        getErrorStack(error),
       );
       throw error;
     }
@@ -260,7 +268,7 @@ Gere produtos REAIS e VARIADOS dentro da categoria especificada.`;
         cleanText = cleanText.replace(/```\n?/g, '');
       }
 
-      const product = JSON.parse(cleanText);
+      const product = JSON.parse(cleanText) as GeneratedProduct;
 
       // Validate required fields
       if (!product.name || !product.description || !product.price) {
@@ -269,7 +277,9 @@ Gere produtos REAIS e VARIADOS dentro da categoria especificada.`;
 
       return product;
     } catch (error) {
-      this.logger.error(`Failed to parse product response: ${error.message}`);
+      this.logger.error(
+        `Failed to parse product response: ${getErrorMessage(error)}`,
+      );
       this.logger.debug(`Raw response: ${text}`);
       throw new Error('Failed to parse AI response');
     }
@@ -285,7 +295,7 @@ Gere produtos REAIS e VARIADOS dentro da categoria especificada.`;
         cleanText = cleanText.replace(/```\n?/g, '');
       }
 
-      const products = JSON.parse(cleanText);
+      const products = JSON.parse(cleanText) as GeneratedProduct[];
 
       if (!Array.isArray(products)) {
         throw new Error('Response is not an array');
@@ -294,7 +304,7 @@ Gere produtos REAIS e VARIADOS dentro da categoria especificada.`;
       return products;
     } catch (error) {
       this.logger.error(
-        `Failed to parse multiple products response: ${error.message}`,
+        `Failed to parse multiple products response: ${getErrorMessage(error)}`,
       );
       this.logger.debug(`Raw response: ${text}`);
       throw new Error('Failed to parse AI response');

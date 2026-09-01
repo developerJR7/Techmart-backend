@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   UseGuards,
-  Request,
   Patch,
 } from '@nestjs/common';
 import {
@@ -17,6 +16,8 @@ import {
 import { ChatbotService } from './chatbot.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Chatbot')
 @Controller('chatbot')
@@ -27,16 +28,16 @@ export class ChatbotController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar nova conversa com o chatbot' })
-  async createConversation(@Request() req) {
-    return this.chatbotService.createConversation(req.user?.id);
+  async createConversation(@CurrentUser() user: RequestUser) {
+    return this.chatbotService.createConversation(user.id);
   }
 
   @Get('conversations')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar conversas do usuário' })
-  getUserConversations(@Request() req) {
-    return this.chatbotService.getUserConversations(req.user.id);
+  getUserConversations(@CurrentUser() user: RequestUser) {
+    return this.chatbotService.getUserConversations(user.id);
   }
 
   @Get('conversations/:id')
@@ -44,8 +45,8 @@ export class ChatbotController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obter conversa específica' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
-  getConversation(@Request() req, @Param('id') id: string) {
-    return this.chatbotService.getConversation(id, req.user?.id);
+  getConversation(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.chatbotService.getConversation(id, user.id);
   }
 
   @Post('conversations/:id/messages')
@@ -54,15 +55,11 @@ export class ChatbotController {
   @ApiOperation({ summary: 'Enviar mensagem (alternativa REST ao WebSocket)' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
   async sendMessage(
-    @Request() req,
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Body() sendMessageDto: SendMessageDto,
   ) {
-    return this.chatbotService.sendMessage(
-      id,
-      sendMessageDto.message,
-      req.user?.id,
-    );
+    return this.chatbotService.sendMessage(id, sendMessageDto.message, user.id);
   }
 
   @Patch('conversations/:id/close')
@@ -70,8 +67,8 @@ export class ChatbotController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fechar conversa' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
-  closeConversation(@Request() req, @Param('id') id: string) {
-    return this.chatbotService.closeConversation(id, req.user?.id);
+  closeConversation(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.chatbotService.closeConversation(id, user.id);
   }
 
   @Patch('conversations/:id/escalate')
@@ -79,7 +76,7 @@ export class ChatbotController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Escalar para atendimento humano' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
-  escalateToHuman(@Request() req, @Param('id') id: string) {
-    return this.chatbotService.escalateToHuman(id, req.user?.id);
+  escalateToHuman(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.chatbotService.escalateToHuman(id, user.id);
   }
 }

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatbotService } from './chatbot.service';
-import { UseGuards } from '@nestjs/common';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 @WebSocketGateway({
   cors: {
@@ -26,7 +26,7 @@ export class ChatbotGateway
 
   constructor(private chatbotService: ChatbotService) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
     client.emit('connected', { message: 'Conectado ao chat!' });
   }
@@ -46,10 +46,10 @@ export class ChatbotGateway
         data.userId,
       );
 
-      client.join(data.conversationId);
+      void client.join(data.conversationId);
       client.emit('conversation_joined', { conversation });
     } catch (error) {
-      client.emit('error', { message: error.message });
+      client.emit('error', { message: getErrorMessage(error) });
     }
   }
 
@@ -77,7 +77,7 @@ export class ChatbotGateway
 
       this.server.to(data.conversationId).emit('typing', { isTyping: false });
     } catch (error) {
-      client.emit('error', { message: error.message });
+      client.emit('error', { message: getErrorMessage(error) });
       this.server.to(data.conversationId).emit('typing', { isTyping: false });
     }
   }
@@ -103,9 +103,9 @@ export class ChatbotGateway
         data.userId,
       );
       this.server.to(data.conversationId).emit('conversation_closed');
-      client.leave(data.conversationId);
+      void client.leave(data.conversationId);
     } catch (error) {
-      client.emit('error', { message: error.message });
+      client.emit('error', { message: getErrorMessage(error) });
     }
   }
 
@@ -121,7 +121,7 @@ export class ChatbotGateway
       );
       this.server.to(data.conversationId).emit('escalated_to_human');
     } catch (error) {
-      client.emit('error', { message: error.message });
+      client.emit('error', { message: getErrorMessage(error) });
     }
   }
 }

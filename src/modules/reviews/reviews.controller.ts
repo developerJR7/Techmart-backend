@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
   Query,
 } from '@nestjs/common';
 import {
@@ -22,6 +21,8 @@ import { UpdateReviewDto } from './dto/update-review.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Reviews')
 @Controller('reviews')
@@ -32,8 +33,11 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar avaliação de produto' })
-  create(@Request() req, @Body() createReviewDto: CreateReviewDto) {
-    return this.reviewsService.create(req.user.id, createReviewDto);
+  create(
+    @CurrentUser() user: RequestUser,
+    @Body() createReviewDto: CreateReviewDto,
+  ) {
+    return this.reviewsService.create(user.id, createReviewDto);
   }
 
   @Get('product/:productId')
@@ -63,20 +67,20 @@ export class ReviewsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar sua avaliação' })
   update(
-    @Request() req,
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Body() updateReviewDto: UpdateReviewDto,
   ) {
-    return this.reviewsService.update(id, req.user.id, updateReviewDto);
+    return this.reviewsService.update(id, user.id, updateReviewDto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar sua avaliação' })
-  remove(@Request() req, @Param('id') id: string) {
-    const isAdmin = req.user.role === 'ADMIN';
-    return this.reviewsService.remove(id, req.user.id, isAdmin);
+  remove(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    const isAdmin = user.role === 'ADMIN';
+    return this.reviewsService.remove(id, user.id, isAdmin);
   }
 
   @Patch(':id/moderate')

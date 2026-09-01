@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
@@ -35,7 +36,7 @@ async function bootstrap() {
     ? process.env.FRONTEND_URL.split(',')
     : ['http://localhost:3000', 'http://localhost:3001'];
 
-  app.enableCors({
+  const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -51,7 +52,8 @@ async function bootstrap() {
       'stripe-signature',
       'X-XSRF-Token',
     ],
-  });
+  };
+  app.enableCors(corsOptions);
 
   // Global Prefix
   app.setGlobalPrefix('api/v1');

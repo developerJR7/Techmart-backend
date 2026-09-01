@@ -1,7 +1,6 @@
 import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
 import * as winston from 'winston';
-import 'winston-daily-rotate-file';
-import DailyRotateFile = require('winston-daily-rotate-file');
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 @Injectable()
 export class LoggerService implements NestLoggerService {
@@ -16,11 +15,18 @@ export class LoggerService implements NestLoggerService {
         format: winston.format.combine(
           winston.format.timestamp(),
           winston.format.colorize(),
-          winston.format.printf(
-            ({ timestamp, level, message, context, trace }) => {
-              return `${timestamp} [${context || 'Application'}] ${level}: ${message}${trace ? `\n${trace}` : ''}`;
-            },
-          ),
+          winston.format.printf((info) => {
+            const timestamp =
+              typeof info.timestamp === 'string' ? info.timestamp : '';
+            const context =
+              typeof info.context === 'string' ? info.context : 'Application';
+            const message =
+              typeof info.message === 'string'
+                ? info.message
+                : JSON.stringify(info.message);
+            const trace = typeof info.trace === 'string' ? info.trace : '';
+            return `${timestamp} [${context}] ${info.level}: ${message}${trace ? `\n${trace}` : ''}`;
+          }),
         ),
       }),
     ];
@@ -106,7 +112,7 @@ export class LoggerService implements NestLoggerService {
     });
   }
 
-  logBusinessEvent(event: string, data: any) {
+  logBusinessEvent(event: string, data: unknown) {
     this.logger.info('Business Event', {
       event,
       data,

@@ -143,9 +143,9 @@ describe('Seller onboarding + RBAC (e2e)', () => {
         .expect(200);
 
       expect(Array.isArray(res.body.data)).toBe(true);
-      expect(
-        res.body.data.every((s: any) => s.status === 'PENDING'),
-      ).toBe(true);
+      expect(res.body.data.every((s: any) => s.status === 'PENDING')).toBe(
+        true,
+      );
       expect(res.body.meta).toBeDefined();
     });
 

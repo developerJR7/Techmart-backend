@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -85,11 +86,11 @@ describe('OrdersService', () => {
   // Regressão da condição de corrida de estoque: dois checkouts do último
   // item em disputa não podem ambos ter sucesso.
   describe('create (atomicidade do estoque)', () => {
-    const dto = {
+    const dto: CreateOrderDto = {
       addressId: 'addr-1',
       items: [{ productId: 'prod-1', quantity: 1 }],
       shippingCost: 0,
-    } as any;
+    };
 
     beforeEach(() => {
       mockPrisma.address.findFirst.mockResolvedValue({

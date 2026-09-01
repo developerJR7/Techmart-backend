@@ -10,6 +10,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
+interface AdminSalesQuery {
+  startDate?: string;
+  endDate?: string;
+  groupBy?: 'day' | 'week' | 'month';
+}
+
 @ApiTags('Admin - Analytics')
 @Controller('admin/analytics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -97,7 +103,7 @@ export class AdminAnalyticsController {
     required: false,
     enum: ['day', 'week', 'month'],
   })
-  async getSalesReport(@Query() query: any) {
+  async getSalesReport(@Query() query: AdminSalesQuery) {
     const startDate = query.startDate
       ? new Date(query.startDate)
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

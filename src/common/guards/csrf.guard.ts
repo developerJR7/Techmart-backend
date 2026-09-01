@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { CSRF_TOKEN_COOKIE, isValidCsrfToken } from '../auth/cookie.util';
 
 /**
@@ -16,14 +17,15 @@ import { CSRF_TOKEN_COOKIE, isValidCsrfToken } from '../auth/cookie.util';
 @Injectable()
 export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const cookieToken = request.cookies?.[CSRF_TOKEN_COOKIE];
+    const request = context.switchToHttp().getRequest<Request>();
+    const cookieToken: unknown = request.cookies?.[CSRF_TOKEN_COOKIE];
     const headerToken = request.headers['x-xsrf-token'];
 
     if (
+      typeof cookieToken !== 'string' ||
+      typeof headerToken !== 'string' ||
       !cookieToken ||
       !headerToken ||
-      typeof headerToken !== 'string' ||
       cookieToken !== headerToken ||
       !isValidCsrfToken(cookieToken)
     ) {

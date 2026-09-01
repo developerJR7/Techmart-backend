@@ -17,7 +17,14 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { OrdersService } from '../orders/orders.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentMethod } from '@prisma/client';
+
+interface AdminOrdersQuery {
+  page?: string;
+  limit?: string;
+  status?: OrderStatus;
+  paymentMethod?: PaymentMethod;
+}
 
 @ApiTags('Admin - Orders')
 @Controller('admin/orders')
@@ -33,7 +40,7 @@ export class AdminOrdersController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'paymentMethod', required: false })
-  async findAll(@Query() query: any) {
+  async findAll(@Query() query: AdminOrdersQuery) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
 

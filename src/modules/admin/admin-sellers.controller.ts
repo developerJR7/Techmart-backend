@@ -1,4 +1,11 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,6 +17,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SellersService } from '../sellers/sellers.service';
 import { SellerStatus } from '@prisma/client';
+
+interface AdminSellersQuery {
+  page?: string;
+  limit?: string;
+  status?: SellerStatus;
+}
 
 @ApiTags('Admin - Sellers')
 @Controller('admin/sellers')
@@ -28,13 +41,13 @@ export class AdminSellersController {
     required: false,
     enum: ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'],
   })
-  findAll(@Query() query: any) {
+  findAll(@Query() query: AdminSellersQuery) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
     return this.sellersService.findAllForAdmin({
       page,
       limit,
-      status: query.status as SellerStatus | undefined,
+      status: query.status,
     });
   }
 

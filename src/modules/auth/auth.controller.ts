@@ -24,6 +24,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 import {
   REFRESH_TOKEN_COOKIE,
   setRefreshTokenCookie,
@@ -71,7 +72,9 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as
+      | string
+      | undefined;
     const result = await this.authService.refreshToken(refreshToken);
     return this.respondWithSession(res, result);
   }
@@ -82,11 +85,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout do usuário e revogação de tokens' })
   async logout(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as
+      | string
+      | undefined;
     const result = await this.authService.logout(user.id, refreshToken);
     clearRefreshTokenCookie(res);
     return result;

@@ -96,25 +96,41 @@ describe('Marketplace foundation (e2e)', () => {
 
     it('slug de loja é único', async () => {
       await prisma.store.create({
-        data: { sellerId: sellerAId, name: 'Loja A', slug: `loja-teste-${Date.now()}` },
+        data: {
+          sellerId: sellerAId,
+          name: 'Loja A',
+          slug: `loja-teste-${Date.now()}`,
+        },
       });
 
-      const dupSlug = await prisma.store.findFirst({ where: { sellerId: sellerAId } });
+      const dupSlug = await prisma.store.findFirst({
+        where: { sellerId: sellerAId },
+      });
 
       await expect(
         prisma.store.create({
-          data: { sellerId: sellerAId, name: 'Loja Duplicada', slug: dupSlug!.slug },
+          data: {
+            sellerId: sellerAId,
+            name: 'Loja Duplicada',
+            slug: dupSlug!.slug,
+          },
         }),
       ).rejects.toThrow();
     });
 
     it('um Seller só pode ter uma Store (sellerId único)', async () => {
-      const existing = await prisma.store.findFirst({ where: { sellerId: sellerAId } });
+      const existing = await prisma.store.findFirst({
+        where: { sellerId: sellerAId },
+      });
       expect(existing).not.toBeNull();
 
       await expect(
         prisma.store.create({
-          data: { sellerId: sellerAId, name: 'Segunda Loja', slug: `segunda-loja-${Date.now()}` },
+          data: {
+            sellerId: sellerAId,
+            name: 'Segunda Loja',
+            slug: `segunda-loja-${Date.now()}`,
+          },
         }),
       ).rejects.toThrow();
     });

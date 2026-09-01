@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 @Injectable()
 export class CartService {
@@ -214,7 +215,7 @@ export class CartService {
         // Continuar mesmo se um item falhar
         console.error(
           `Erro ao adicionar item ${item.productId}:`,
-          error.message,
+          getErrorMessage(error),
         );
       }
     }

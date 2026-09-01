@@ -66,10 +66,7 @@ describe('Seller store management + ownership (e2e)', () => {
       where: { email: { contains: 'seller-store-e2e' } },
     });
 
-    const admin = await register(
-      'admin-seller-store-e2e@example.com',
-      'Admin',
-    );
+    const admin = await register('admin-seller-store-e2e@example.com', 'Admin');
     await prisma.user.update({
       where: { id: admin.id },
       data: { role: 'ADMIN' },

@@ -1,5 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { getErrorMessage } from '../../common/utils/error.util';
+
+interface LinketrackEvent {
+  data?: string;
+  hora?: string;
+  local?: string;
+  cidade?: string;
+  status?: string;
+  descricao?: string;
+  subStatus?: string[];
+}
+
+interface LinketrackResponse {
+  erro?: boolean;
+  eventos?: LinketrackEvent[];
+}
 
 export interface TrackingEvent {
   date: string;
@@ -29,7 +45,7 @@ export class TrackingService {
     try {
       // Usando API pública do Melhor Rastreio (exemplo)
       // Em produção, use uma API key válida
-      const response = await axios.get(
+      const response = await axios.get<LinketrackResponse>(
         `https://api.linketrack.com/track/json?user=teste&token=1abcd00b2731640e886fb41a8a9671ad1434c599dbaa0a0de9a5aa619f29a83f&codigo=${trackingCode}`,
       );
 
@@ -45,11 +61,11 @@ export class TrackingService {
         };
       }
 
-      const events: TrackingEvent[] = (data.eventos || []).map((evt: any) => ({
-        date: evt.data,
-        time: evt.hora,
+      const events: TrackingEvent[] = (data.eventos || []).map((evt) => ({
+        date: evt.data || '',
+        time: evt.hora || '',
         location: evt.local || evt.cidade || 'N/A',
-        status: evt.status,
+        status: evt.status || '',
         description: evt.descricao || evt.subStatus?.[0] || '',
       }));
 
@@ -61,7 +77,7 @@ export class TrackingService {
         lastUpdate: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('Erro ao rastrear Correios:', error.message);
+      console.error('Erro ao rastrear Correios:', getErrorMessage(error));
       return {
         carrier: 'correios',
         trackingCode,
@@ -76,11 +92,11 @@ export class TrackingService {
    * Rastrear pedido na Jadlog
    * API: https://www.jadlog.com.br/jadlog/api
    */
-  async trackJadlog(trackingCode: string): Promise<TrackingInfo> {
+  trackJadlog(trackingCode: string): Promise<TrackingInfo> {
     try {
       // Implementação simulada - em produção, use a API real da Jadlog
       // Requer autenticação e credenciais
-      return {
+      return Promise.resolve({
         carrier: 'jadlog',
         trackingCode,
         status: 'in_transit',
@@ -94,26 +110,26 @@ export class TrackingService {
           },
         ],
         lastUpdate: new Date().toISOString(),
-      };
+      });
     } catch (error) {
-      console.error('Erro ao rastrear Jadlog:', error.message);
-      return {
+      console.error('Erro ao rastrear Jadlog:', getErrorMessage(error));
+      return Promise.resolve({
         carrier: 'jadlog',
         trackingCode,
         status: 'error',
         events: [],
         lastUpdate: new Date().toISOString(),
-      };
+      });
     }
   }
 
   /**
    * Rastrear pedido na Total Express
    */
-  async trackTotalExpress(trackingCode: string): Promise<TrackingInfo> {
+  trackTotalExpress(trackingCode: string): Promise<TrackingInfo> {
     try {
       // Implementação simulada - em produção, use a API real
-      return {
+      return Promise.resolve({
         carrier: 'totalexpress',
         trackingCode,
         status: 'in_transit',
@@ -127,16 +143,16 @@ export class TrackingService {
           },
         ],
         lastUpdate: new Date().toISOString(),
-      };
+      });
     } catch (error) {
-      console.error('Erro ao rastrear Total Express:', error.message);
-      return {
+      console.error('Erro ao rastrear Total Express:', getErrorMessage(error));
+      return Promise.resolve({
         carrier: 'totalexpress',
         trackingCode,
         status: 'error',
         events: [],
         lastUpdate: new Date().toISOString(),
-      };
+      });
     }
   }
 

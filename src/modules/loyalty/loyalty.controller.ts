@@ -1,6 +1,8 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 import { LoyaltyService } from './loyalty.service';
 
 @ApiTags('Loyalty')
@@ -12,8 +14,8 @@ export class LoyaltyController {
 
   @Get('profile')
   @ApiOperation({ summary: 'Get user loyalty profile (points and history)' })
-  getProfile(@Req() req: any) {
-    return this.loyaltyService.getLoyaltyProfile(req.user.id);
+  getProfile(@CurrentUser() user: RequestUser) {
+    return this.loyaltyService.getLoyaltyProfile(user.id);
   }
 
   @Get('calculate-earn')

@@ -13,6 +13,30 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DiscountType } from '@prisma/client';
+
+interface CreateCouponBody {
+  code: string;
+  description?: string;
+  type: DiscountType;
+  value: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  isActive?: boolean;
+  startsAt?: string;
+  expiresAt?: string;
+}
+
+interface UpdateCouponBody {
+  description?: string;
+  value?: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  isActive?: boolean;
+  expiresAt?: string;
+}
 
 @ApiTags('Admin - Coupons')
 @Controller('admin/coupons')
@@ -32,7 +56,7 @@ export class AdminCouponsController {
 
   @Post()
   @ApiOperation({ summary: 'Criar cupom (Admin)' })
-  async create(@Body() data: any) {
+  async create(@Body() data: CreateCouponBody) {
     return this.prisma.coupon.create({
       data: {
         code: data.code.toUpperCase(),
@@ -51,7 +75,7 @@ export class AdminCouponsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar cupom (Admin)' })
-  async update(@Param('id') id: string, @Body() data: any) {
+  async update(@Param('id') id: string, @Body() data: UpdateCouponBody) {
     return this.prisma.coupon.update({
       where: { id },
       data: {

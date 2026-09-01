@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AnalyticsMetrics {
@@ -123,12 +124,12 @@ export class AnalyticsService {
   }
 
   private async calculateRevenue(from: Date, to?: Date) {
-    const where: any = {
+    const where: Prisma.OrderWhereInput = {
       createdAt: { gte: from },
       status: { in: ['PROCESSING', 'SHIPPED', 'DELIVERED'] },
     };
     if (to) {
-      where.createdAt.lte = to;
+      (where.createdAt as Prisma.DateTimeFilter).lte = to;
     }
 
     const orders = await this.prisma.order.findMany({ where });
@@ -279,7 +280,7 @@ export class AnalyticsService {
       customerRevenue.size > 0 ? totalLifetimeValue / customerRevenue.size : 0;
 
     const returningCustomers = Array.from(customerRevenue.entries()).filter(
-      ([_, value]) => value > 0,
+      ([, value]) => value > 0,
     ).length;
 
     return {
@@ -317,7 +318,9 @@ export class AnalyticsService {
     });
 
     // Filter out users who completed orders
-    const abandonedCarts: any[] = [];
+    const abandonedCarts: Array<
+      (typeof carts)[number] & { estimatedValue: number }
+    > = [];
     for (const cart of carts) {
       if (!cart.userId) continue;
 

@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 interface ProductInfo {
   id: string;
@@ -22,7 +24,7 @@ interface InventoryStatus {
 @Injectable()
 export class AIService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model?: GenerativeModel;
 
   constructor(
     private configService: ConfigService,
@@ -36,7 +38,7 @@ export class AIService {
   }
 
   async getProductsInfo(query?: string): Promise<ProductInfo[]> {
-    const where: any = { isActive: true };
+    const where: Prisma.ProductWhereInput = { isActive: true };
 
     if (query) {
       where.OR = [
@@ -82,6 +84,7 @@ export class AIService {
     conversationHistory: Array<{ role: string; content: string }>,
     userId?: string,
   ): Promise<string> {
+    void userId;
     const inventoryStatus = await this.getInventoryStatus();
 
     // Se tiver Gemini configurado, usar
@@ -108,13 +111,13 @@ Seja amigável, use emojis e responda de forma concisa e útil.`;
         const result = await chat.sendMessage(
           `${systemPrompt}\n\nUsuário: ${userMessage}`,
         );
-        const response = await result.response;
+        const response = result.response;
         return (
           response.text() ||
           this.generateFallbackResponse(userMessage, inventoryStatus)
         );
       } catch (error) {
-        console.error('Erro Gemini:', error.message);
+        console.error('Erro Gemini:', getErrorMessage(error));
       }
     }
 

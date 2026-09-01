@@ -79,7 +79,10 @@ describe('SellersService', () => {
         document: 'old-doc',
         phone: 'old-phone',
       });
-      mockPrisma.seller.update.mockResolvedValue({ id: 's1', status: 'PENDING' });
+      mockPrisma.seller.update.mockResolvedValue({
+        id: 's1',
+        status: 'PENDING',
+      });
 
       const result = await service.apply('u1', { document: 'new-doc' });
 
@@ -149,9 +152,9 @@ describe('SellersService', () => {
 
     it('403 quando não existe seller', async () => {
       mockPrisma.seller.findUnique.mockResolvedValue(null);
-      await expect(
-        service.getApprovedSellerByUserId('u1'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getApprovedSellerByUserId('u1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('403 quando existe mas não está APPROVED', async () => {
@@ -160,9 +163,9 @@ describe('SellersService', () => {
         userId: 'u1',
         status: 'PENDING',
       });
-      await expect(
-        service.getApprovedSellerByUserId('u1'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getApprovedSellerByUserId('u1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -173,7 +176,10 @@ describe('SellersService', () => {
         userId: 'u1',
         status: 'PENDING',
       });
-      mockPrisma.seller.update.mockResolvedValue({ id: 's1', status: 'APPROVED' });
+      mockPrisma.seller.update.mockResolvedValue({
+        id: 's1',
+        status: 'APPROVED',
+      });
       mockPrisma.user.update.mockResolvedValue({ id: 'u1', role: 'SELLER' });
       mockPrisma.$transaction.mockResolvedValue([
         { id: 's1', status: 'APPROVED' },
@@ -233,7 +239,10 @@ describe('SellersService', () => {
         userId: 'u1',
         status: 'PENDING',
       });
-      mockPrisma.seller.update.mockResolvedValue({ id: 's1', status: 'REJECTED' });
+      mockPrisma.seller.update.mockResolvedValue({
+        id: 's1',
+        status: 'REJECTED',
+      });
 
       const result = await service.reject('s1');
 
@@ -262,7 +271,10 @@ describe('SellersService', () => {
         userId: 'u1',
         status: 'APPROVED',
       });
-      mockPrisma.seller.update.mockResolvedValue({ id: 's1', status: 'SUSPENDED' });
+      mockPrisma.seller.update.mockResolvedValue({
+        id: 's1',
+        status: 'SUSPENDED',
+      });
       mockPrisma.user.update.mockResolvedValue({ id: 'u1', role: 'CUSTOMER' });
       mockPrisma.$transaction.mockResolvedValue([
         { id: 's1', status: 'SUSPENDED' },

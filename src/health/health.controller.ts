@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
+import { getErrorMessage } from '../common/utils/error.util';
 
 @ApiTags('Health')
 @Controller('health')
@@ -10,7 +11,7 @@ export class HealthController {
   @Get()
   @ApiOperation({ summary: 'Health check básico' })
   @ApiResponse({ status: 200, description: 'Servidor está funcionando' })
-  async healthCheck() {
+  healthCheck() {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -35,7 +36,7 @@ export class HealthController {
       return {
         status: 'error',
         database: 'disconnected',
-        error: error.message,
+        error: getErrorMessage(error),
         timestamp: new Date().toISOString(),
       };
     }
@@ -67,7 +68,7 @@ export class HealthController {
           database: 'failed',
           server: 'ok',
         },
-        error: error.message,
+        error: getErrorMessage(error),
         timestamp: new Date().toISOString(),
       };
     }

@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Users')
 @Controller('users')
@@ -16,14 +17,14 @@ export class UsersController {
 
   @Get('me')
   @ApiOperation({ summary: 'Obter perfil do usuário logado' })
-  async getProfile(@CurrentUser() user: any) {
+  async getProfile(@CurrentUser() user: RequestUser) {
     return this.usersService.findOne(user.id);
   }
 
   @Patch('me')
   @ApiOperation({ summary: 'Atualizar o próprio perfil (nome, avatar)' })
   async updateProfile(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     return this.usersService.updateProfile(user.id, updateProfileDto);

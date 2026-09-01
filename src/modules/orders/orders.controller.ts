@@ -15,6 +15,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrderStatus } from '@prisma/client';
+import type { RequestUser } from '../../types/express';
 
 import { UpsellService } from './upsell.service';
 
@@ -30,13 +31,16 @@ export class OrdersController {
 
   @Post()
   @ApiOperation({ summary: 'Criar novo pedido' })
-  create(@CurrentUser() user: any, @Body() createOrderDto: CreateOrderDto) {
+  create(
+    @CurrentUser() user: RequestUser,
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
     return this.ordersService.create(user.id, createOrderDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar pedidos do usuário' })
-  findAll(@CurrentUser() user: any) {
+  findAll(@CurrentUser() user: RequestUser) {
     return this.ordersService.findAll(user.id);
   }
 
@@ -50,7 +54,7 @@ export class OrdersController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter pedido por ID' })
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.ordersService.findOne(
       id,
       user.role === 'ADMIN' ? undefined : user.id,
@@ -67,7 +71,10 @@ export class OrdersController {
 
   @Get(':id/upsell-offers')
   @ApiOperation({ summary: 'Get upsell offers for completed order' })
-  async getUpsellOffers(@Param('id') id: string, @CurrentUser() user: any) {
+  async getUpsellOffers(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+  ) {
     // Garante que o pedido pertence ao usuário (ou é admin) antes de gerar ofertas
     await this.ordersService.findOne(
       id,
@@ -81,7 +88,7 @@ export class OrdersController {
   processUpsell(
     @Param('id') orderId: string,
     @Param('productId') productId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.upsellService.processUpsell(orderId, productId, user.id);
   }

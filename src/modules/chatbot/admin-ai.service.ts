@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 export interface SalesMetrics {
   totalRevenue: number;
@@ -30,7 +31,7 @@ export interface InventoryInsight {
 @Injectable()
 export class AdminAIService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model?: GenerativeModel;
 
   constructor(
     private configService: ConfigService,
@@ -183,10 +184,10 @@ Use emojis moderadamente e seja direto ao ponto.
       const result = await this.model.generateContent(
         `${context}\n\nPergunta do Admin: ${query}`,
       );
-      const response = await result.response;
+      const response = result.response;
       return response.text();
     } catch (error) {
-      console.error('Erro ao gerar insights com IA:', error.message);
+      console.error('Erro ao gerar insights com IA:', getErrorMessage(error));
       return this.generateFallbackInsights(
         query,
         salesMetrics,

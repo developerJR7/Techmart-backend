@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AIService } from './ai.service';
 import { AdminAIService } from './admin-ai.service';
@@ -21,7 +22,7 @@ export class ChatbotService {
   }
 
   async getConversation(conversationId: string, userId?: string) {
-    const where: any = { id: conversationId };
+    const where: Prisma.ChatConversationWhereInput = { id: conversationId };
     if (userId) {
       where.userId = userId;
     }
@@ -92,7 +93,7 @@ export class ChatbotService {
     }));
 
     let response: string;
-    let actions: any;
+    let actions: unknown;
 
     // Se for admin, usar AdminAIService para insights de negócio
     if (isAdmin) {

@@ -212,7 +212,7 @@ export class AuthService {
     return user;
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string | undefined) {
     if (!refreshToken) {
       throw new UnauthorizedException('Token de atualização não informado');
     }

@@ -5,6 +5,9 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductNotFoundException } from '../../common/exceptions/custom-exceptions';
 import { LoggerService } from '../../common/logger/logger.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { slugify } from '../../common/utils/slug.util';
 
 type ProductsListResult = {
   data: Prisma.ProductGetPayload<{ include: { category: true } }>[];
@@ -189,9 +192,12 @@ export class ProductsService {
     return product;
   }
 
-  async create(data: any) {
+  async create(data: CreateProductDto) {
     const product = await this.prisma.product.create({
-      data,
+      data: {
+        ...data,
+        slug: data.slug || slugify(data.name),
+      },
       include: {
         category: true,
       },
@@ -205,7 +211,7 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: UpdateProductDto) {
     const product = await this.prisma.product.update({
       where: { id },
       data,

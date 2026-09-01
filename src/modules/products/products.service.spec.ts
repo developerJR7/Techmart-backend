@@ -7,8 +7,6 @@ import { LoggerService } from '../../common/logger/logger.service';
 
 describe('ProductsService', () => {
   let service: ProductsService;
-  let prisma: PrismaService;
-  let cache: any;
 
   const mockPrisma = {
     product: {
@@ -58,8 +56,6 @@ describe('ProductsService', () => {
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    cache = module.get(CACHE_MANAGER);
   });
 
   afterEach(() => {
@@ -73,9 +69,9 @@ describe('ProductsService', () => {
 
       const result = await service.findAll({});
 
-      expect(cache.get).toHaveBeenCalledWith('products:all:{}');
+      expect(mockCache.get).toHaveBeenCalledWith('products:all:{}');
       expect(result).toEqual(cachedProducts);
-      expect(prisma.product.findMany).not.toHaveBeenCalled();
+      expect(mockPrisma.product.findMany).not.toHaveBeenCalled();
     });
 
     it('should fetch from database and cache if not cached', async () => {
@@ -91,10 +87,10 @@ describe('ProductsService', () => {
         meta: { total: 1, page: 1, lastPage: 1, limit: 20 },
       };
 
-      expect(cache.get).toHaveBeenCalled();
-      expect(prisma.product.findMany).toHaveBeenCalled();
-      expect(prisma.product.count).toHaveBeenCalled();
-      expect(cache.set).toHaveBeenCalledWith(
+      expect(mockCache.get).toHaveBeenCalled();
+      expect(mockPrisma.product.findMany).toHaveBeenCalled();
+      expect(mockPrisma.product.count).toHaveBeenCalled();
+      expect(mockCache.set).toHaveBeenCalledWith(
         'products:all:{}',
         expected,
         300,
@@ -117,7 +113,7 @@ describe('ProductsService', () => {
         limit: 10,
       });
 
-      expect(prisma.product.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             isActive: true,
@@ -145,7 +141,7 @@ describe('ProductsService', () => {
       const result = await service.findOne('1');
 
       expect(result).toEqual(product);
-      expect(cache.set).toHaveBeenCalledWith('product:1', product, 300);
+      expect(mockCache.set).toHaveBeenCalledWith('product:1', product, 300);
     });
 
     it('should throw ProductNotFoundException if not found', async () => {
@@ -173,7 +169,7 @@ describe('ProductsService', () => {
       const result = await service.create(createDto);
 
       expect(result).toEqual(createdProduct);
-      expect(cache.del).toHaveBeenCalledWith('products:all:*');
+      expect(mockCache.del).toHaveBeenCalledWith('products:all:*');
     });
   });
 
@@ -186,8 +182,8 @@ describe('ProductsService', () => {
       const result = await service.update('1', updateDto);
 
       expect(result).toEqual(updatedProduct);
-      expect(cache.del).toHaveBeenCalledWith('product:1');
-      expect(cache.del).toHaveBeenCalledWith('products:all:*');
+      expect(mockCache.del).toHaveBeenCalledWith('product:1');
+      expect(mockCache.del).toHaveBeenCalledWith('products:all:*');
     });
   });
 
@@ -197,10 +193,10 @@ describe('ProductsService', () => {
 
       await service.remove('1');
 
-      expect(prisma.product.delete).toHaveBeenCalledWith({
+      expect(mockPrisma.product.delete).toHaveBeenCalledWith({
         where: { id: '1' },
       });
-      expect(cache.del).toHaveBeenCalledWith('product:1');
+      expect(mockCache.del).toHaveBeenCalledWith('product:1');
     });
   });
 });

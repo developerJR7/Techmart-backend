@@ -151,9 +151,9 @@ describe('StoreService', () => {
       });
       mockPrisma.store.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.update('user-a', { name: 'X' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('user-a', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
       expect(mockPrisma.store.update).not.toHaveBeenCalled();
     });
 
@@ -170,7 +170,10 @@ describe('StoreService', () => {
         name: 'X',
       });
 
-      await service.update('user-a', { name: 'X', sellerId: 'seller-b' } as any);
+      await service.update('user-a', {
+        name: 'X',
+        sellerId: 'seller-b',
+      } as any);
 
       expect(mockPrisma.store.update).toHaveBeenCalledWith({
         where: { sellerId: 'seller-a' },

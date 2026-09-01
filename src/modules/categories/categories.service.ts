@@ -1,15 +1,18 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CategoryNotFoundException } from '../../common/exceptions/custom-exceptions';
 import { LoggerService } from '../../common/logger/logger.service';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
+import { slugify } from '../../common/utils/slug.util';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     private prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cache: any,
+    @Inject(CACHE_MANAGER) private cache: Cache,
     private logger: LoggerService,
   ) {}
 
@@ -70,9 +73,12 @@ export class CategoriesService {
     return category;
   }
 
-  async create(data: any) {
+  async create(data: CreateCategoryDto) {
     const category = await this.prisma.category.create({
-      data,
+      data: {
+        ...data,
+        slug: data.slug || slugify(data.name),
+      },
     });
 
     await this.invalidateCategoriesCache();
@@ -84,7 +90,7 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: UpdateCategoryDto) {
     const category = await this.prisma.category.update({
       where: { id },
       data,

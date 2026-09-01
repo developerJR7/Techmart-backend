@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { UpsellService } from './upsell.service';
+import type { RequestUser } from '../../types/express';
 
 describe('OrdersController', () => {
   let controller: OrdersController;
@@ -34,7 +35,13 @@ describe('OrdersController', () => {
   // Regressão do IDOR: GET /orders/:id/upsell-offers não podia ser chamado
   // com o ID de um pedido de outro usuário para descobrir o que ele comprou.
   describe('getUpsellOffers', () => {
-    const userA = { id: 'user-a', role: 'CUSTOMER' };
+    const userA: RequestUser = {
+      id: 'user-a',
+      role: 'CUSTOMER',
+      email: 'user-a@example.com',
+      name: 'User A',
+      isActive: true,
+    };
 
     it('usuário A acessando as ofertas do próprio pedido A → permitido', async () => {
       mockOrdersService.findOne.mockResolvedValue({ id: 'order-a' });
@@ -69,7 +76,13 @@ describe('OrdersController', () => {
     });
 
     it('admin acessa ofertas de qualquer pedido sem filtro de dono', async () => {
-      const admin = { id: 'admin-1', role: 'ADMIN' };
+      const admin: RequestUser = {
+        id: 'admin-1',
+        role: 'ADMIN',
+        email: 'admin-1@example.com',
+        name: 'Admin',
+        isActive: true,
+      };
       mockOrdersService.findOne.mockResolvedValue({ id: 'order-b' });
       mockUpsellService.generateUpsellOffers.mockResolvedValue([]);
 

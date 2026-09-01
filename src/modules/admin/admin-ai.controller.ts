@@ -9,7 +9,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AIProductGeneratorService } from '../chatbot/ai-product-generator.service';
-import { AdminAIService } from '../chatbot/admin-ai.service';
+import { AdminAIService, SalesMetrics } from '../chatbot/admin-ai.service';
 import {
   AdminAnalyticsQueryDto,
   GenerateProductDto,
@@ -219,8 +219,14 @@ export class AdminAIController {
     return map[timeRange] || 7;
   }
 
-  private extractInsights(response: string, metrics: any) {
-    const insights: any[] = [];
+  private extractInsights(response: string, metrics: SalesMetrics) {
+    const insights: Array<{
+      type: 'OPPORTUNITY' | 'WARNING';
+      title: string;
+      description: string;
+      actionable: boolean;
+      suggestedAction: string;
+    }> = [];
 
     // Detectar oportunidades
     if (metrics.averageOrderValue > 200) {

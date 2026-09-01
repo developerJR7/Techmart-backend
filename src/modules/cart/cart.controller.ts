@@ -7,13 +7,14 @@ import {
   Body,
   Param,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('Cart')
 @Controller('cart')
@@ -24,25 +25,28 @@ export class CartController {
 
   @Get()
   @ApiOperation({ summary: 'Obter carrinho do usuário' })
-  getCart(@Request() req) {
-    return this.cartService.getCart(req.user.id);
+  getCart(@CurrentUser() user: RequestUser) {
+    return this.cartService.getCart(user.id);
   }
 
   @Post('items')
   @ApiOperation({ summary: 'Adicionar item ao carrinho' })
-  addItem(@Request() req, @Body() addToCartDto: AddToCartDto) {
-    return this.cartService.addItem(req.user.id, addToCartDto);
+  addItem(
+    @CurrentUser() user: RequestUser,
+    @Body() addToCartDto: AddToCartDto,
+  ) {
+    return this.cartService.addItem(user.id, addToCartDto);
   }
 
   @Patch('items/:productId')
   @ApiOperation({ summary: 'Atualizar quantidade de item' })
   updateItem(
-    @Request() req,
+    @CurrentUser() user: RequestUser,
     @Param('productId') productId: string,
     @Body() updateCartItemDto: UpdateCartItemDto,
   ) {
     return this.cartService.updateItemQuantity(
-      req.user.id,
+      user.id,
       productId,
       updateCartItemDto.quantity,
     );
@@ -50,21 +54,27 @@ export class CartController {
 
   @Delete('items/:productId')
   @ApiOperation({ summary: 'Remover item do carrinho' })
-  removeItem(@Request() req, @Param('productId') productId: string) {
-    return this.cartService.removeItem(req.user.id, productId);
+  removeItem(
+    @CurrentUser() user: RequestUser,
+    @Param('productId') productId: string,
+  ) {
+    return this.cartService.removeItem(user.id, productId);
   }
 
   @Delete()
   @ApiOperation({ summary: 'Limpar carrinho' })
-  clearCart(@Request() req) {
-    return this.cartService.clearCart(req.user.id);
+  clearCart(@CurrentUser() user: RequestUser) {
+    return this.cartService.clearCart(user.id);
   }
 
   @Post('merge')
   @ApiOperation({
     summary: 'Mesclar carrinho de convidado com carrinho do usuário',
   })
-  mergeCart(@Request() req, @Body() guestCartItems: AddToCartDto[]) {
-    return this.cartService.mergeGuestCart(req.user.id, guestCartItems);
+  mergeCart(
+    @CurrentUser() user: RequestUser,
+    @Body() guestCartItems: AddToCartDto[],
+  ) {
+    return this.cartService.mergeGuestCart(user.id, guestCartItems);
   }
 }

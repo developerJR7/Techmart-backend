@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentMethod, Prisma } from '@prisma/client';
 
 import { LoyaltyService } from '../loyalty/loyalty.service';
 
@@ -34,7 +34,7 @@ export class OrdersService {
     const orderItems: Array<{
       productId: string;
       quantity: number;
-      price: any;
+      price: Prisma.Decimal;
     }> = [];
 
     for (const item of createOrderDto.items) {
@@ -122,7 +122,7 @@ export class OrdersService {
   }
 
   async findAll(userId?: string) {
-    const where: any = {};
+    const where: Prisma.OrderWhereInput = {};
     if (userId) {
       where.userId = userId;
     }
@@ -153,15 +153,18 @@ export class OrdersService {
   async findAllAdmin(query: {
     page: number;
     limit: number;
-    status?: string;
-    paymentMethod?: string;
+    status?: OrderStatus;
+    paymentMethod?: PaymentMethod;
   }) {
     const { page, limit, status, paymentMethod } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.OrderWhereInput = {};
     if (status) {
       where.status = status;
+    }
+    if (paymentMethod) {
+      where.payment = { method: paymentMethod };
     }
 
     const [orders, total] = await Promise.all([
@@ -203,7 +206,7 @@ export class OrdersService {
   }
 
   async findOne(id: string, userId?: string) {
-    const where: any = { id };
+    const where: Prisma.OrderWhereInput = { id };
     if (userId) {
       where.userId = userId;
     }

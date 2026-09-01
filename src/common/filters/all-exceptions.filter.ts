@@ -45,7 +45,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message:
         typeof message === 'string'
           ? message
-          : (message as any).message || message,
+          : ((message as { message?: unknown }).message ?? message),
     };
 
     // Log error
@@ -64,7 +64,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           body: request.body,
           query: request.query,
           params: request.params,
-          user: (request as any).user,
+          user: request.user,
         },
       });
     }

@@ -4,8 +4,9 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import axios from 'axios';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 @Injectable()
 export class IntegrationService {
@@ -17,7 +18,7 @@ export class IntegrationService {
     name: string;
     provider: string;
     value: string;
-    settings?: any;
+    settings?: Record<string, unknown>;
   }) {
     // Basic validation
     if (!data.name || !data.provider || !data.value) {
@@ -35,7 +36,10 @@ export class IntegrationService {
         where: { id: existing.id },
         data: {
           value: data.value,
-          settings: data.settings || existing.settings,
+          settings:
+            (data.settings as Prisma.InputJsonValue | undefined) ||
+            existing.settings ||
+            undefined,
           provider: data.provider,
         },
       });
@@ -47,7 +51,7 @@ export class IntegrationService {
         name: data.name,
         provider: data.provider,
         value: data.value,
-        settings: data.settings || {},
+        settings: (data.settings as Prisma.InputJsonValue | undefined) || {},
       },
     });
   }
@@ -120,12 +124,12 @@ export class IntegrationService {
       }
     } catch (error) {
       this.logger.error(
-        `Connection test failed for ${integration.name}: ${error.message}`,
+        `Connection test failed for ${integration.name}: ${getErrorMessage(error)}`,
       );
       return {
         success: false,
-        message: `Connection failed: ${error.message}`,
-        error: error.message,
+        message: `Connection failed: ${getErrorMessage(error)}`,
+        error: getErrorMessage(error),
       };
     }
   }

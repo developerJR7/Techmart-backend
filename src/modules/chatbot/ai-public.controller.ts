@@ -19,6 +19,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ChatbotService } from './chatbot.service';
 import { AIRecommendationService } from './ai-recommendation.service';
 import { ChatMessageDto, QuickActionDto } from './dto/ai-requests.dto';
+import type { RequestUser } from '../../types/express';
 
 @ApiTags('AI - Public')
 @Controller('ai')
@@ -63,7 +64,7 @@ export class AIPublicController {
 
   @Post('chatbot/quick-actions')
   @ApiOperation({ summary: 'Executar ação rápida do chatbot' })
-  async executeQuickAction(@Body() dto: QuickActionDto) {
+  executeQuickAction(@Body() dto: QuickActionDto) {
     switch (dto.action) {
       case 'CONTACT_REPRESENTATIVE':
         return {
@@ -121,7 +122,7 @@ export class AIPublicController {
     enum: ['homepage', 'product-page', 'cart', 'checkout'],
   })
   async getPersonalizedRecommendations(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Query('limit') limit?: number,
     @Query('context') context?: string,
   ) {

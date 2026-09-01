@@ -92,7 +92,12 @@ export class SellersService {
 
     return {
       data,
-      meta: { total, page, lastPage: Math.max(Math.ceil(total / limit), 1), limit },
+      meta: {
+        total,
+        page,
+        lastPage: Math.max(Math.ceil(total / limit), 1),
+        limit,
+      },
     };
   }
 
@@ -133,7 +138,9 @@ export class SellersService {
     }
 
     if (!seller.userId) {
-      throw new ConflictException('Seller da plataforma não possui usuário vinculado');
+      throw new ConflictException(
+        'Seller da plataforma não possui usuário vinculado',
+      );
     }
 
     const userId = seller.userId;
@@ -183,7 +190,9 @@ export class SellersService {
     }
 
     if (!seller.userId) {
-      throw new ConflictException('Seller da plataforma não possui usuário vinculado');
+      throw new ConflictException(
+        'Seller da plataforma não possui usuário vinculado',
+      );
     }
 
     const userId = seller.userId;

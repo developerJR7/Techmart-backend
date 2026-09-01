@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import * as streamifier from 'streamifier';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 @Injectable()
 export class UploadService {
@@ -25,7 +26,7 @@ export class UploadService {
     }
   }
 
-  async uploadImage(file: any): Promise<string> {
+  async uploadImage(file: Express.Multer.File): Promise<string> {
     const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
 
     if (!cloudName) {
@@ -35,7 +36,7 @@ export class UploadService {
     }
 
     try {
-      return new Promise((resolve, reject) => {
+      return await new Promise<string>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: 'techmart',
@@ -44,7 +45,7 @@ export class UploadService {
           (error, result) => {
             if (error) {
               this.logger.error(`Cloudinary upload failed: ${error.message}`);
-              reject(error);
+              reject(new Error(error.message));
             } else if (result) {
               this.logger.log(
                 `Image uploaded successfully: ${result.secure_url}`,
@@ -60,7 +61,7 @@ export class UploadService {
         streamifier.createReadStream(file.buffer).pipe(uploadStream);
       });
     } catch (error) {
-      this.logger.error(`Failed to upload image: ${error.message}`);
+      this.logger.error(`Failed to upload image: ${getErrorMessage(error)}`);
       throw error;
     }
   }

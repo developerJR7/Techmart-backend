@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Product } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getErrorMessage } from '../../common/utils/error.util';
 
 @Injectable()
 export class AIRecommendationService {
@@ -30,6 +32,7 @@ export class AIRecommendationService {
     limit: number = 10,
     context: string = 'homepage',
   ) {
+    void context;
     try {
       // Buscar histórico de compras do usuário
       const userOrders = await this.prisma.order.findMany({
@@ -90,7 +93,7 @@ export class AIRecommendationService {
       }));
     } catch (error) {
       this.logger.error(
-        `Failed to get personalized recommendations: ${error.message}`,
+        `Failed to get personalized recommendations: ${getErrorMessage(error)}`,
       );
       return this.getFallbackRecommendations(limit);
     }
@@ -126,7 +129,9 @@ export class AIRecommendationService {
         matchedFeatures: ['categoria', 'faixa de preço'],
       }));
     } catch (error) {
-      this.logger.error(`Failed to get similar products: ${error.message}`);
+      this.logger.error(
+        `Failed to get similar products: ${getErrorMessage(error)}`,
+      );
       return [];
     }
   }
@@ -151,7 +156,7 @@ export class AIRecommendationService {
 
       // Contar frequência de produtos comprados juntos
       const productFrequency = new Map<string, number>();
-      const productData = new Map<string, any>();
+      const productData = new Map<string, Product>();
 
       ordersWithProduct.forEach((item) => {
         item.order.orderItems.forEach((otherItem) => {
@@ -167,7 +172,7 @@ export class AIRecommendationService {
         .slice(0, 4);
 
       const products = sorted.map(([id, frequency]) => {
-        const product = productData.get(id);
+        const product = productData.get(id)!;
         return {
           id: product.id,
           name: product.name,
@@ -185,7 +190,7 @@ export class AIRecommendationService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to get frequently bought together: ${error.message}`,
+        `Failed to get frequently bought together: ${getErrorMessage(error)}`,
       );
       return { products: [], bundleDiscount: 0, totalSavings: 0 };
     }

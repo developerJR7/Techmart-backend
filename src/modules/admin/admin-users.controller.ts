@@ -16,8 +16,16 @@ import {
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+
+interface AdminUsersQuery {
+  page?: string;
+  limit?: string;
+  role?: UserRole;
+  search?: string;
+}
 
 @ApiTags('Admin - Users')
 @Controller('admin/users')
@@ -33,12 +41,12 @@ export class AdminUsersController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'role', required: false })
   @ApiQuery({ name: 'search', required: false })
-  async findAll(@Query() query: any) {
+  async findAll(@Query() query: AdminUsersQuery) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
 
     if (query.role) {
       where.role = query.role;

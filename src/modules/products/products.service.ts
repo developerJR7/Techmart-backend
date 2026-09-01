@@ -131,6 +131,7 @@ export class ProductsService {
       where: { id },
       include: {
         category: true,
+        specifications: true,
         reviews: {
           include: {
             user: {
@@ -168,6 +169,7 @@ export class ProductsService {
       where: { slug },
       include: {
         category: true,
+        specifications: true,
         reviews: {
           include: {
             user: {

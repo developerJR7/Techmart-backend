@@ -1,32 +1,51 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductNotFoundException } from '../../common/exceptions/custom-exceptions';
 import { LoggerService } from '../../common/logger/logger.service';
+
+type ProductsListResult = {
+  data: Prisma.ProductGetPayload<{ include: { category: true } }>[];
+  meta: { total: number; page: number; lastPage: number; limit: number };
+};
+
+export interface FindProductsParams {
+  categoryId?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  inStock?: boolean;
+  featured?: boolean;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cache: any,
+    @Inject(CACHE_MANAGER) private cache: Cache,
     private logger: LoggerService,
   ) {}
 
-  async findAll(params: any) {
+  async findAll(params: FindProductsParams) {
     const cacheKey = `products:all:${JSON.stringify(params)}`;
 
     // Try cache first
-    const cached = await this.cache.get(cacheKey);
+    const cached = await this.cache.get<ProductsListResult>(cacheKey);
     if (cached) {
       this.logger.debug(`Cache hit for ${cacheKey}`, 'ProductsService');
       return cached;
     }
 
-    const page = Math.max(1, Math.floor(params.page) || 1);
+    const page = Math.max(1, Math.floor(params.page ?? 1) || 1);
     const limit = params.limit || 20;
 
-    const where: any = { isActive: true };
+    const where: Prisma.ProductWhereInput = { isActive: true };
     if (params.categoryId) {
       where.categoryId = params.categoryId;
     }
@@ -37,9 +56,10 @@ export class ProductsService {
       ];
     }
     if (params.minPrice !== undefined || params.maxPrice !== undefined) {
-      where.price = {};
-      if (params.minPrice !== undefined) where.price.gte = params.minPrice;
-      if (params.maxPrice !== undefined) where.price.lte = params.maxPrice;
+      where.price = {
+        ...(params.minPrice !== undefined && { gte: params.minPrice }),
+        ...(params.maxPrice !== undefined && { lte: params.maxPrice }),
+      };
     }
     if (params.minRating !== undefined) {
       where.averageRating = { gte: params.minRating };
@@ -63,7 +83,8 @@ export class ProductsService {
       // 5 estrelas na ordenação "Melhor avaliados".
       rating_desc: { averageRating: { sort: 'desc', nulls: 'last' } },
     };
-    const orderBy = orderByMap[params.sort] || orderByMap.relevance;
+    const orderBy =
+      orderByMap[params.sort ?? 'relevance'] ?? orderByMap.relevance;
 
     // Fetch from database
     const startTime = Date.now();

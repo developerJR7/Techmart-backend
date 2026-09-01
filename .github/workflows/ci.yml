@@ -33,28 +33,23 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: ./backend
         run: npm ci
 
       - name: Generate Prisma Client
-        working-directory: ./backend
         run: npx prisma generate
 
       - name: Run migrations
-        working-directory: ./backend
         env:
           DATABASE_URL: postgresql://techmart:techmart123@localhost:5432/techmart_db?schema=public
         run: npx prisma migrate deploy
 
       - name: Run linter
-        working-directory: ./backend
         run: npm run lint
 
       - name: Run tests
-        working-directory: ./backend
         env:
           DATABASE_URL: postgresql://techmart:techmart123@localhost:5432/techmart_db?schema=public
           JWT_SECRET: test-secret
@@ -74,24 +69,19 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: ./backend
         run: npm ci
 
       - name: Generate Prisma Client
-        working-directory: ./backend
         run: npx prisma generate
 
       - name: Build application
-        working-directory: ./backend
         run: npm run build
 
       - name: Build Docker image
-        run: |
-          cd backend
-          docker build -t techmart-backend:latest .
+        run: docker build -t techmart-backend:latest .
 
       - name: Log in to Docker Hub (optional)
         if: false

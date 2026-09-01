@@ -22,6 +22,19 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 
+interface FindProductsQuery {
+  categoryId?: string;
+  search?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  minRating?: string;
+  inStock?: string;
+  featured?: string;
+  sort?: string;
+  page?: string;
+  limit?: string;
+}
+
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
@@ -52,7 +65,7 @@ export class ProductsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  findAll(@Query() query: any) {
+  findAll(@Query() query: FindProductsQuery) {
     return this.productsService.findAll({
       categoryId: query.categoryId,
       search: query.search,

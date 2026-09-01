@@ -12,6 +12,7 @@ describe('Seller store management + ownership (e2e)', () => {
 
   let adminToken: string;
   let sellerAToken: string;
+  let sellerAUserId: string;
   let sellerBToken: string;
   let customerToken: string;
 
@@ -84,6 +85,7 @@ describe('Seller store management + ownership (e2e)', () => {
       'Seller A',
     );
     sellerAToken = sellerA.token;
+    sellerAUserId = sellerA.id;
     await applyAndApprove(sellerAToken, sellerA.id);
 
     const sellerB = await register(
@@ -192,8 +194,14 @@ describe('Seller store management + ownership (e2e)', () => {
       .send({ sellerId: 'outro-id', id: 'outro-id', createdAt: '2000-01-01' })
       .expect(400);
 
-    const store = await prisma.store.findFirst({ where: { name: 'Loja A' } });
+    // Escopado pelo dono real (sellerA), não pelo nome "Loja A" — um nome
+    // igual em outra suite/execução não pode fazer este teste ler a loja
+    // errada num Postgres compartilhado entre todos os specs e2e.
+    const store = await prisma.store.findFirst({
+      where: { seller: { userId: sellerAUserId } },
+    });
     expect(store).not.toBeNull();
+    expect(store?.name).toBe('Loja A');
   });
 
   it('sem autenticação → 401 em todas as rotas de loja', async () => {

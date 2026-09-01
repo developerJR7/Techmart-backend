@@ -4,6 +4,15 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+// Namespace desta suite dentro do Postgres compartilhado entre todos os
+// arquivos .e2e-spec.ts no mesmo job de CI (ver docs/e2e-isolation.md).
+// Nunca usar deleteMany() sem filtro aqui — outra suite pode ter usuários
+// reais na mesma tabela no momento em que este arquivo roda (a ordem dos
+// arquivos não é alfabética nem fixa).
+const NS = 'users-e2e';
+const USER_A_EMAIL = `user-a-${NS}@example.com`;
+const USER_B_EMAIL = `user-b-${NS}@example.com`;
+
 describe('Users / Profile / Avatar (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -11,6 +20,9 @@ describe('Users / Profile / Avatar (e2e)', () => {
   let userAId: string;
   let userBToken: string;
   let userBId: string;
+
+  const cleanup = () =>
+    prisma.user.deleteMany({ where: { email: { contains: NS } } });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -29,12 +41,14 @@ describe('Users / Profile / Avatar (e2e)', () => {
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
-    await prisma.user.deleteMany();
+    // Defensivo: limpa resíduo de uma execução anterior que tenha
+    // crashado antes do próprio afterAll.
+    await cleanup();
 
     const registerA = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
-        email: 'user-a@example.com',
+        email: USER_A_EMAIL,
         password: 'Test123!@#',
         name: 'User A',
       });
@@ -44,7 +58,7 @@ describe('Users / Profile / Avatar (e2e)', () => {
     const registerB = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
-        email: 'user-b@example.com',
+        email: USER_B_EMAIL,
         password: 'Test123!@#',
         name: 'User B',
       });
@@ -53,6 +67,7 @@ describe('Users / Profile / Avatar (e2e)', () => {
   });
 
   afterAll(async () => {
+    await cleanup();
     await prisma.$disconnect();
     await app.close();
   });
@@ -65,7 +80,7 @@ describe('Users / Profile / Avatar (e2e)', () => {
         .expect(200);
 
       expect(response.body.id).toBe(userAId);
-      expect(response.body.email).toBe('user-a@example.com');
+      expect(response.body.email).toBe(USER_A_EMAIL);
     });
 
     it('sem autenticação → 401', () => {

@@ -4,10 +4,29 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+// Namespace desta suite dentro do Postgres compartilhado entre todos os
+// arquivos .e2e-spec.ts no mesmo job de CI (ver docs/e2e-isolation.md).
+// Nunca usar deleteMany() sem filtro aqui — outra suite pode ter dados
+// reais na mesma tabela no momento em que este arquivo roda (a ordem dos
+// arquivos não é alfabética nem fixa, ver nota no topo de products.e2e-spec).
+const NS = 'products-e2e';
+
 describe('Products (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let authToken: string;
+  let categoryId: string;
+
+  const cleanup = async () => {
+    // Ordem importa: products.categoryId -> categories.id é ON DELETE
+    // RESTRICT (ver migration 20251125024555_init), então a categoria só
+    // pode ser removida depois dos produtos que apontam pra ela.
+    await prisma.product.deleteMany({
+      where: { category: { slug: { contains: NS } } },
+    });
+    await prisma.category.deleteMany({ where: { slug: { contains: NS } } });
+    await prisma.user.deleteMany({ where: { email: { contains: NS } } });
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -31,10 +50,21 @@ describe('Products (e2e)', () => {
 
     prisma = app.get<PrismaService>(PrismaService);
 
-    // Clean database
-    await prisma.product.deleteMany();
-    await prisma.category.deleteMany();
-    await prisma.user.deleteMany();
+    // Defensivo: limpa resíduo de uma execução anterior que tenha
+    // crashado antes do próprio afterAll (mesmo padrão usado em
+    // seller-onboarding/seller-store.e2e-spec.ts).
+    await cleanup();
+
+    // Categoria própria desta suite, criada antes de qualquer teste — os
+    // testes de listagem filtram por ela via ?categoryId=, nunca leem o
+    // catálogo inteiro (que pode ter produtos de outras origens).
+    const category = await prisma.category.create({
+      data: {
+        name: `Electronics ${NS}`,
+        slug: `electronics-${NS}`,
+      },
+    });
+    categoryId = category.id;
 
     // Create test user, then promote it to ADMIN directly via Prisma —
     // não existe (nem deve existir) um endpoint de auto-promoção na API,
@@ -42,9 +72,9 @@ describe('Products (e2e)', () => {
     const registerResponse = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
-        email: 'test@example.com',
+        email: `admin-${NS}@example.com`,
         password: 'Test123!@#',
-        name: 'Test User',
+        name: 'Test Admin',
       });
 
     authToken = registerResponse.body.accessToken;
@@ -56,14 +86,15 @@ describe('Products (e2e)', () => {
   });
 
   afterAll(async () => {
+    await cleanup();
     await prisma.$disconnect();
     await app.close();
   });
 
   describe('/api/v1/products (GET)', () => {
-    it('should return empty array initially', async () => {
+    it('should return no products for a freshly created category', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/v1/products')
+        .get(`/api/v1/products?categoryId=${categoryId}`)
         .expect(200);
 
       expect(response.body.data).toEqual([]);
@@ -71,38 +102,29 @@ describe('Products (e2e)', () => {
     });
 
     it('should return products with pagination', async () => {
-      // Create test category
-      const category = await prisma.category.create({
-        data: {
-          name: 'Electronics',
-          slug: 'electronics',
-        },
-      });
-
-      // Create test products
       await prisma.product.createMany({
         data: [
           {
             name: 'Product 1',
-            slug: 'product-1',
+            slug: `product-1-${NS}`,
             description: 'Description 1',
             price: 100,
-            categoryId: category.id,
+            categoryId,
             stock: 10,
           },
           {
             name: 'Product 2',
-            slug: 'product-2',
+            slug: `product-2-${NS}`,
             description: 'Description 2',
             price: 200,
-            categoryId: category.id,
+            categoryId,
             stock: 20,
           },
         ],
       });
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/products?page=1&limit=10')
+        .get(`/api/v1/products?categoryId=${categoryId}&page=1&limit=10`)
         .expect(200);
 
       expect(response.body.data).toHaveLength(2);
@@ -112,7 +134,7 @@ describe('Products (e2e)', () => {
 
   describe('/api/v1/products/:id (GET)', () => {
     it('should return a product by id', async () => {
-      const product = await prisma.product.findFirst();
+      const product = await prisma.product.findFirst({ where: { categoryId } });
 
       if (!product) throw new Error('Product not found');
 
@@ -133,19 +155,15 @@ describe('Products (e2e)', () => {
 
   describe('/api/v1/products (POST)', () => {
     it('should create a new product', async () => {
-      const category = await prisma.category.findFirst();
-
-      if (!category) throw new Error('Category not found');
-
       const response = await request(app.getHttpServer())
         .post('/api/v1/products')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           name: 'New Product',
-          slug: 'new-product',
+          slug: `new-product-${NS}`,
           description: 'New Description',
           price: 300,
-          categoryId: category.id,
+          categoryId,
           stock: 30,
         })
         .expect(201);
@@ -179,7 +197,7 @@ describe('Products (e2e)', () => {
 
   describe('/api/v1/products/:id (PATCH)', () => {
     it('should update a product', async () => {
-      const product = await prisma.product.findFirst();
+      const product = await prisma.product.findFirst({ where: { categoryId } });
 
       if (!product) throw new Error('Product not found');
 
@@ -199,7 +217,7 @@ describe('Products (e2e)', () => {
 
   describe('/api/v1/products/:id (DELETE)', () => {
     it('should delete a product', async () => {
-      const product = await prisma.product.findFirst();
+      const product = await prisma.product.findFirst({ where: { categoryId } });
 
       if (!product) throw new Error('Product not found');
 

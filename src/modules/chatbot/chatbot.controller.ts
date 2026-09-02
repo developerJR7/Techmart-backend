@@ -46,7 +46,7 @@ export class ChatbotController {
   @ApiOperation({ summary: 'Obter conversa específica' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
   getConversation(@CurrentUser() user: RequestUser, @Param('id') id: string) {
-    return this.chatbotService.getConversation(id, user.id);
+    return this.chatbotService.getConversation(id, user);
   }
 
   @Post('conversations/:id/messages')
@@ -59,7 +59,7 @@ export class ChatbotController {
     @Param('id') id: string,
     @Body() sendMessageDto: SendMessageDto,
   ) {
-    return this.chatbotService.sendMessage(id, sendMessageDto.message, user.id);
+    return this.chatbotService.sendMessage(id, sendMessageDto.message, user);
   }
 
   @Patch('conversations/:id/close')
@@ -68,7 +68,7 @@ export class ChatbotController {
   @ApiOperation({ summary: 'Fechar conversa' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
   closeConversation(@CurrentUser() user: RequestUser, @Param('id') id: string) {
-    return this.chatbotService.closeConversation(id, user.id);
+    return this.chatbotService.closeConversation(id, user);
   }
 
   @Patch('conversations/:id/escalate')
@@ -77,6 +77,6 @@ export class ChatbotController {
   @ApiOperation({ summary: 'Escalar para atendimento humano' })
   @ApiParam({ name: 'id', description: 'ID da conversa' })
   escalateToHuman(@CurrentUser() user: RequestUser, @Param('id') id: string) {
-    return this.chatbotService.escalateToHuman(id, user.id);
+    return this.chatbotService.escalateToHuman(id, user);
   }
 }

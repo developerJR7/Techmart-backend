@@ -17,10 +17,20 @@ export class ChatMessageDto {
   @IsOptional()
   conversationId?: string;
 
+  // Propositalmente SEM campo `userId`: identidade nunca pode vir do corpo
+  // da requisição, só de @CurrentUser() (JWT validado). O ValidationPipe
+  // global (forbidNonWhitelisted: true) rejeita com 400 qualquer `userId`
+  // que o cliente tente enviar aqui — ver ai-public.controller.ts.
+
+  // Credencial de posse de uma conversa ANÔNIMA (ver
+  // ChatbotService#getConversation) — devolvida uma única vez, na resposta
+  // da mensagem que criou a conversa. Nunca identifica uma pessoa (não é
+  // um userId), só prova posse de uma conversa específica. Ignorado
+  // quando o chamador está autenticado e a conversa pertence a ele.
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  userId?: string;
+  conversationToken?: string;
 }
 
 export class QuickActionDto {

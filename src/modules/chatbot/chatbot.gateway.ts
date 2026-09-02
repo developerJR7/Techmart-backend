@@ -38,12 +38,17 @@ export class ChatbotGateway
   @SubscribeMessage('join_conversation')
   async handleJoinConversation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; userId?: string },
+    @MessageBody() data: { conversationId: string },
   ) {
     try {
+      // A conexão de socket não é autenticada hoje (sem handshake JWT),
+      // então nunca há uma identidade confiável aqui — nunca aceitar um
+      // `userId` do payload do cliente (era exatamente o bug do C1/H2).
+      // Isso restringe o gateway a conversas anônimas; usuário autenticado
+      // que precisar do histórico da própria conversa usa o REST
+      // (ChatbotController, com JwtAuthGuard de verdade).
       const conversation = await this.chatbotService.getConversation(
         data.conversationId,
-        data.userId,
       );
 
       void client.join(data.conversationId);
@@ -57,7 +62,7 @@ export class ChatbotGateway
   async handleMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    data: { conversationId: string; message: string; userId?: string },
+    data: { conversationId: string; message: string },
   ) {
     try {
       // Emitir "typing" para mostrar que a IA está processando
@@ -66,7 +71,6 @@ export class ChatbotGateway
       const result = await this.chatbotService.sendMessage(
         data.conversationId,
         data.message,
-        data.userId,
       );
 
       // Emitir resposta para todos na conversa
@@ -95,13 +99,10 @@ export class ChatbotGateway
   @SubscribeMessage('close_conversation')
   async handleCloseConversation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; userId?: string },
+    @MessageBody() data: { conversationId: string },
   ) {
     try {
-      await this.chatbotService.closeConversation(
-        data.conversationId,
-        data.userId,
-      );
+      await this.chatbotService.closeConversation(data.conversationId);
       this.server.to(data.conversationId).emit('conversation_closed');
       void client.leave(data.conversationId);
     } catch (error) {
@@ -112,13 +113,10 @@ export class ChatbotGateway
   @SubscribeMessage('escalate_to_human')
   async handleEscalate(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; userId?: string },
+    @MessageBody() data: { conversationId: string },
   ) {
     try {
-      await this.chatbotService.escalateToHuman(
-        data.conversationId,
-        data.userId,
-      );
+      await this.chatbotService.escalateToHuman(data.conversationId);
       this.server.to(data.conversationId).emit('escalated_to_human');
     } catch (error) {
       client.emit('error', { message: getErrorMessage(error) });

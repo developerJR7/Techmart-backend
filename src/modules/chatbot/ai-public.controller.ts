@@ -15,6 +15,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ChatbotService } from './chatbot.service';
 import { AIRecommendationService } from './ai-recommendation.service';
@@ -32,20 +33,53 @@ export class AIPublicController {
   // ========== CHATBOT ==========
 
   @Post('chatbot/conversations')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar/Continuar conversa com chatbot' })
   @ApiResponse({ status: 200, description: 'Resposta do chatbot' })
-  async chatWithBot(@Body() dto: ChatMessageDto) {
-    const conversationId = dto.conversationId || this.generateConversationId();
+  async chatWithBot(
+    @CurrentUser() user: RequestUser | undefined,
+    @Body() dto: ChatMessageDto,
+  ) {
+    // Identidade vem exclusivamente de @CurrentUser() (JWT opcional, mas
+    // validado quando presente) — o corpo da requisição não tem (nem pode
+    // ter, o DTO não declara) um campo `userId`. Sem conversationId, cria
+    // uma conversa de verdade no banco em vez de um id fake gerado aqui,
+    // que nunca existiria pra sendMessage encontrar.
+    let conversationId = dto.conversationId;
+    // Só emitido quando esta chamada cria uma conversa ANÔNIMA nova — é a
+    // única prova de posse dela (ver ChatbotService#getConversation); sem
+    // isso, qualquer outro visitante que soubesse o conversationId
+    // conseguiria continuá-la só pelo id.
+    let conversationToken: string | undefined;
 
-    // Enviar mensagem e obter resposta
+    if (!conversationId) {
+      const conversation = await this.chatbotService.createConversation(
+        user?.id,
+      );
+      conversationId = conversation.id;
+      if (!user) {
+        conversationToken = this.chatbotService.getAnonymousConversationToken(
+          conversation.id,
+        );
+      }
+    }
+
+    // Ao criar a conversa nesta mesma chamada, o token que acabamos de
+    // gerar É a credencial válida — usar esse, não dto.conversationToken
+    // (que o cliente não tem como enviar ainda: ele só existe a partir
+    // desta resposta). Ao continuar uma conversa já existente, a única
+    // fonte válida é o que o cliente apresentar de volta no corpo.
     const response = await this.chatbotService.sendMessage(
       conversationId,
       dto.message,
-      dto.userId,
+      user,
+      conversationToken ?? dto.conversationToken,
     );
 
     return {
       conversationId,
+      conversationToken,
       response: response.message.content,
       suggestions: [
         'Rastrear meu pedido',
@@ -57,9 +91,21 @@ export class AIPublicController {
   }
 
   @Get('chatbot/conversations/:id')
-  @ApiOperation({ summary: 'Obter histórico de conversa' })
-  async getConversation(@Param('id') id: string) {
-    return this.chatbotService.getConversation(id);
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Obter histórico de conversa (apenas do dono autenticado)',
+  })
+  async getConversation(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+  ) {
+    // Autenticação obrigatória (não opcional) aqui de propósito: leitura
+    // de histórico nunca é permitida por conversationId sozinho, nem pra
+    // conversas anônimas — ver ChatbotService#getConversation. Continuar
+    // uma conversa anônima via POST /chatbot/conversations continua
+    // funcionando; lê-la de volta, não.
+    return this.chatbotService.getConversation(id, user);
   }
 
   @Post('chatbot/quick-actions')
@@ -158,9 +204,5 @@ export class AIPublicController {
   @ApiOperation({ summary: 'Produtos frequentemente comprados juntos' })
   async getFrequentlyBoughtTogether(@Param('productId') productId: string) {
     return this.recommendationService.getFrequentlyBoughtTogether(productId);
-  }
-
-  private generateConversationId(): string {
-    return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }

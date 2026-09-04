@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { MergeCartDto } from './dto/merge-cart.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { RequestUser } from '../../types/express';
@@ -71,10 +72,7 @@ export class CartController {
   @ApiOperation({
     summary: 'Mesclar carrinho de convidado com carrinho do usuário',
   })
-  mergeCart(
-    @CurrentUser() user: RequestUser,
-    @Body() guestCartItems: AddToCartDto[],
-  ) {
-    return this.cartService.mergeGuestCart(user.id, guestCartItems);
+  mergeCart(@CurrentUser() user: RequestUser, @Body() dto: MergeCartDto) {
+    return this.cartService.mergeGuestCart(user.id, dto.items);
   }
 }

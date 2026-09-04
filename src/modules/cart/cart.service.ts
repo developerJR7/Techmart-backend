@@ -61,16 +61,18 @@ export class CartService {
   }
 
   async addItem(userId: string, addToCartDto: AddToCartDto) {
+    const { productId, quantity } = addToCartDto;
+
     // Verificar se o produto existe e está ativo
     const product = await this.prisma.product.findUnique({
-      where: { id: addToCartDto.productId },
+      where: { id: productId },
     });
 
     if (!product || !product.isActive) {
       throw new NotFoundException('Produto não encontrado');
     }
 
-    if (product.stock < addToCartDto.quantity) {
+    if (product.stock < quantity) {
       throw new BadRequestException('Estoque insuficiente');
     }
 
@@ -84,39 +86,27 @@ export class CartService {
         data: { userId },
       });
     }
+    const cartId = cart.id;
 
-    // Verificar se o item já existe no carrinho
-    const existingItem = await this.prisma.cartItem.findUnique({
-      where: {
-        cartId_productId: {
-          cartId: cart.id,
-          productId: addToCartDto.productId,
-        },
-      },
-    });
+    // upsert com incremento atômico dentro de uma transação: duas
+    // requisições concorrentes pro mesmo produto (ex.: duplo clique) não se
+    // pisam em "ler quantidade antiga -> escrever nova" (lost update) nem
+    // colidem na constraint única cartId_productId (race entre dois
+    // creates). A checagem de estoque acima é otimista (lida antes do
+    // upsert) e não cobre o incremento concorrente — revalidamos o
+    // resultado final dentro da mesma transação e, se exceder o estoque
+    // real, o throw desfaz o upsert inteiro (tudo ou nada).
+    await this.prisma.$transaction(async (tx) => {
+      const item = await tx.cartItem.upsert({
+        where: { cartId_productId: { cartId, productId } },
+        create: { cartId, productId, quantity },
+        update: { quantity: { increment: quantity } },
+      });
 
-    if (existingItem) {
-      // Atualizar quantidade
-      const newQuantity = existingItem.quantity + addToCartDto.quantity;
-
-      if (product.stock < newQuantity) {
+      if (item.quantity > product.stock) {
         throw new BadRequestException('Estoque insuficiente');
       }
-
-      await this.prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data: { quantity: newQuantity },
-      });
-    } else {
-      // Criar novo item
-      await this.prisma.cartItem.create({
-        data: {
-          cartId: cart.id,
-          productId: addToCartDto.productId,
-          quantity: addToCartDto.quantity,
-        },
-      });
-    }
+    });
 
     return this.getCart(userId);
   }
@@ -208,18 +198,25 @@ export class CartService {
   }
 
   async mergeGuestCart(userId: string, guestCartItems: AddToCartDto[]) {
+    // Best-effort: um item do carrinho de convidado que não existe mais ou
+    // ficou sem estoque não pode impedir os outros itens válidos de serem
+    // mesclados. Mas ao contrário da versão anterior, o motivo de cada
+    // falha é reportado no retorno em vez de só logado — sem falha
+    // silenciosa pro usuário que acabou de logar.
+    const skipped: Array<{ productId: string; reason: string }> = [];
+
     for (const item of guestCartItems) {
       try {
         await this.addItem(userId, item);
       } catch (error) {
-        // Continuar mesmo se um item falhar
-        console.error(
-          `Erro ao adicionar item ${item.productId}:`,
-          getErrorMessage(error),
-        );
+        skipped.push({
+          productId: item.productId,
+          reason: getErrorMessage(error),
+        });
       }
     }
 
-    return this.getCart(userId);
+    const cart = await this.getCart(userId);
+    return { ...cart, skippedItems: skipped };
   }
 }

@@ -5,9 +5,10 @@ import {
   Body,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -40,8 +41,18 @@ export class OrdersController {
 
   @Get()
   @ApiOperation({ summary: 'Listar pedidos do usuário' })
-  findAll(@CurrentUser() user: RequestUser) {
-    return this.ordersService.findAll(user.id);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @CurrentUser() user: RequestUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ordersService.findAllPaginated({
+      userId: user.id,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 10,
+    });
   }
 
   @Get('all')
@@ -67,6 +78,12 @@ export class OrdersController {
   @ApiOperation({ summary: 'Atualizar status do pedido (Admin)' })
   updateStatus(@Param('id') id: string, @Body('status') status: OrderStatus) {
     return this.ordersService.updateStatus(id, status);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancelar pedido próprio' })
+  cancel(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.ordersService.cancel(id, user.id);
   }
 
   @Get(':id/upsell-offers')

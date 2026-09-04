@@ -44,7 +44,7 @@ export class AdminOrdersController {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
 
-    return this.ordersService.findAllAdmin({
+    return this.ordersService.findAllPaginated({
       page,
       limit,
       status: query.status,

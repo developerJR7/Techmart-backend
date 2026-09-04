@@ -10,6 +10,7 @@ describe('OrdersController', () => {
 
   const mockOrdersService = {
     findOne: jest.fn(),
+    cancel: jest.fn(),
   };
 
   const mockUpsellService = {
@@ -92,6 +93,31 @@ describe('OrdersController', () => {
         'order-b',
         undefined,
       );
+    });
+  });
+
+  describe('cancel', () => {
+    const userA: RequestUser = {
+      id: 'user-a',
+      role: 'CUSTOMER',
+      email: 'user-a@example.com',
+      name: 'User A',
+      isActive: true,
+    };
+
+    it('delega ao service sempre com o id do usuário autenticado, nunca um id vindo do cliente', async () => {
+      mockOrdersService.cancel.mockResolvedValue({
+        id: 'order-a',
+        status: 'CANCELLED',
+      });
+
+      const result = await controller.cancel('order-a', userA);
+
+      expect(mockOrdersService.cancel).toHaveBeenCalledWith(
+        'order-a',
+        'user-a',
+      );
+      expect(result).toEqual({ id: 'order-a', status: 'CANCELLED' });
     });
   });
 });

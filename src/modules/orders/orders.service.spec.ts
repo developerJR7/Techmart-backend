@@ -9,8 +9,8 @@ describe('OrdersService', () => {
   let service: OrdersService;
 
   const mockTx = {
-    order: { create: jest.fn() },
-    product: { updateMany: jest.fn() },
+    order: { create: jest.fn(), update: jest.fn() },
+    product: { updateMany: jest.fn(), update: jest.fn() },
   };
 
   const mockPrisma = {
@@ -130,6 +130,123 @@ describe('OrdersService', () => {
       await expect(service.create('user-a', dto)).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('cancel', () => {
+    const cancelableOrder = {
+      id: 'order-a',
+      userId: 'user-a',
+      status: 'PENDING',
+      orderItems: [
+        { productId: 'prod-1', quantity: 2 },
+        { productId: 'prod-2', quantity: 1 },
+      ],
+    };
+
+    it('usuário não pode cancelar pedido de outro usuário (ownership via findOne)', async () => {
+      // findFirst com { id, userId } não encontra nada quando o pedido é
+      // de outro usuário — mesma proteção já usada em findOne.
+      mockPrisma.order.findFirst.mockResolvedValue(null);
+
+      await expect(service.cancel('order-b', 'user-a')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it.each(['SHIPPED', 'DELIVERED', 'CANCELLED'])(
+      'pedido em status %s não pode ser cancelado',
+      async (status) => {
+        mockPrisma.order.findFirst.mockResolvedValue({
+          ...cancelableOrder,
+          status,
+        });
+
+        await expect(service.cancel('order-a', 'user-a')).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['PENDING', 'PROCESSING'])(
+      'pedido em status %s é cancelado e devolve o estoque de cada item',
+      async (status) => {
+        mockPrisma.order.findFirst.mockResolvedValue({
+          ...cancelableOrder,
+          status,
+        });
+        mockTx.order.update.mockResolvedValue({
+          ...cancelableOrder,
+          status: 'CANCELLED',
+        });
+
+        const result = await service.cancel('order-a', 'user-a');
+
+        expect(result.status).toBe('CANCELLED');
+        expect(mockTx.product.update).toHaveBeenCalledWith({
+          where: { id: 'prod-1' },
+          data: { stock: { increment: 2 } },
+        });
+        expect(mockTx.product.update).toHaveBeenCalledWith({
+          where: { id: 'prod-2' },
+          data: { stock: { increment: 1 } },
+        });
+        expect(mockTx.order.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 'order-a' },
+            data: { status: 'CANCELLED' },
+          }),
+        );
+      },
+    );
+  });
+
+  describe('findAllPaginated', () => {
+    const mockFindMany = jest.fn().mockResolvedValue([]);
+    const mockCount = jest.fn().mockResolvedValue(0);
+
+    beforeEach(() => {
+      (mockPrisma as unknown as { order: typeof mockPrisma.order & {
+        findMany: typeof mockFindMany;
+        count: typeof mockCount;
+      } }).order.findMany = mockFindMany;
+      (mockPrisma as unknown as { order: { count: typeof mockCount } }).order.count =
+        mockCount;
+    });
+
+    it('com userId, escopa a listagem ao próprio usuário (uso por GET /orders)', async () => {
+      await service.findAllPaginated({ page: 1, limit: 10, userId: 'user-a' });
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'user-a' } }),
+      );
+      expect(mockCount).toHaveBeenCalledWith({ where: { userId: 'user-a' } });
+    });
+
+    it('sem userId, lista todos os pedidos (uso por GET /admin/orders)', async () => {
+      await service.findAllPaginated({ page: 1, limit: 10 });
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
+    });
+
+    it('devolve o formato paginado {data, meta}', async () => {
+      mockFindMany.mockResolvedValueOnce([{ id: 'o1' }]);
+      mockCount.mockResolvedValueOnce(1);
+
+      const result = await service.findAllPaginated({
+        page: 1,
+        limit: 10,
+        userId: 'user-a',
+      });
+
+      expect(result).toEqual({
+        data: [{ id: 'o1' }],
+        meta: { total: 1, page: 1, lastPage: 1, limit: 10 },
+      });
     });
   });
 });

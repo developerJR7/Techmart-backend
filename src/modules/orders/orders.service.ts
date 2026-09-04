@@ -87,6 +87,7 @@ export class OrdersService {
             },
           },
           address: true,
+          payment: true,
           user: {
             select: {
               id: true,
@@ -150,16 +151,22 @@ export class OrdersService {
     });
   }
 
-  async findAllAdmin(query: {
+  // Usado tanto por GET /orders (userId setado = só os pedidos do usuário
+  // autenticado) quanto por GET /admin/orders (userId ausente = todos).
+  async findAllPaginated(query: {
     page: number;
     limit: number;
+    userId?: string;
     status?: OrderStatus;
     paymentMethod?: PaymentMethod;
   }) {
-    const { page, limit, status, paymentMethod } = query;
+    const { page, limit, userId, status, paymentMethod } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.OrderWhereInput = {};
+    if (userId) {
+      where.userId = userId;
+    }
     if (status) {
       where.status = status;
     }
@@ -177,6 +184,7 @@ export class OrdersService {
             },
           },
           address: true,
+          payment: true,
           user: {
             select: {
               id: true,
@@ -220,6 +228,7 @@ export class OrdersService {
           },
         },
         address: true,
+        payment: true,
         user: {
           select: {
             id: true,
@@ -239,6 +248,60 @@ export class OrdersService {
 
   async findOneAdmin(id: string) {
     return this.findOne(id);
+  }
+
+  // Estados a partir dos quais o próprio cliente pode cancelar (mesma regra
+  // já aplicada no botão do frontend, agora também no servidor): depois de
+  // SHIPPED o pedido já saiu para entrega e não é mais um cancelamento
+  // simples; DELIVERED/CANCELLED são estados finais.
+  private static readonly CANCELABLE_STATUSES: OrderStatus[] = [
+    'PENDING',
+    'PROCESSING',
+  ];
+
+  async cancel(id: string, userId: string) {
+    // findOne já garante ownership (userId no where) e lança NotFound se o
+    // pedido não existir ou pertencer a outro usuário — sem isso um usuário
+    // poderia sondar/cancelar pedidos de terceiros só adivinhando o ID.
+    const order = await this.findOne(id, userId);
+
+    if (!OrdersService.CANCELABLE_STATUSES.includes(order.status)) {
+      throw new BadRequestException(
+        `Pedido em status ${order.status} não pode ser cancelado`,
+      );
+    }
+
+    // Cancelamento e devolução de estoque atômicos: se a devolução de
+    // qualquer item falhar, o status também não muda.
+    return this.prisma.$transaction(async (tx) => {
+      for (const item of order.orderItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+        include: {
+          orderItems: {
+            include: {
+              product: true,
+            },
+          },
+          address: true,
+          payment: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+    });
   }
 
   async updateStatus(id: string, status: OrderStatus) {

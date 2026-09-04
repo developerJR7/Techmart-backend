@@ -99,6 +99,8 @@ describe('Chatbot security (e2e) — C1/H1/H2', () => {
       data: {
         userId: customerAId,
         street: 'Rua Teste',
+        number: '123',
+        neighborhood: 'Centro',
         city: 'São Paulo',
         state: 'SP',
         zipCode: '00000-000',
